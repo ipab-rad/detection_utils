@@ -8,19 +8,11 @@ import cv2
 from model_evaluator.dataset_reader import DatasetReader2D
 from model_evaluator.detection import Detection2D, BBox2D, Label2D
 
-dataset_dir = '/rosbags/waymo/validation'
 
 contexts = [
     '1024360143612057520_3580_000_3600_000,1553735853462203',
     '1024360143612057520_3580_000_3600_000,1553735853662172',
 ]
-
-
-def read(tag, context_name):
-    paths = glob.glob(f'{dataset_dir}/{tag}/{context_name}.parquet')
-
-    return dd.read_parquet(paths)
-
 
 def parse_context_names_and_timestamps():
     lines = contexts
@@ -91,14 +83,21 @@ class WaymoDatasetReader2D(DatasetReader2D):
 
         return detections
 
+    def __init__(self, dataset_dir: str):
+        self.dataset_dir = dataset_dir
+
+    def read(self, tag, context_name):
+        paths = glob.glob(f'{self.dataset_dir}/{tag}/{context_name}.parquet')
+        return dd.read_parquet(paths)
+
     def read_data(self) -> list[tuple[np.ndarray, list[Detection2D]]]:
         context_names = parse_context_names_and_timestamps()
 
         output = []
 
         for context_name in context_names:
-            cam_image_df = read('camera_image', context_name)
-            cam_box_df = read('camera_box', context_name)
+            cam_image_df = self.read('camera_image', context_name)
+            cam_box_df = self.read('camera_box', context_name)
 
             image_w_box_df = v2.merge(
                 cam_image_df, cam_box_df, right_group=True
