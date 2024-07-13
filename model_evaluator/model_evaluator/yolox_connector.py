@@ -9,15 +9,17 @@ import queue
 from sensor_msgs.msg import Image
 from tier4_perception_msgs.msg import DetectedObjectsWithFeature, DetectedObjectWithFeature
 
-from model_evaluator.inference_connector import InferenceConnector
-from model_evaluator.detection import Detection, BBox, Label
+from model_evaluator.inference_connector import InferenceConnector2D
+from model_evaluator.detection import Detection2D, BBox2D, Label2D
 
 class TensorrtYOLOXConnectorNode(Node):
 
-    def __init__(self, publish_topic: str, subscription_topic: str, results_queue: queue.SimpleQueue):
+    results_queue: queue.SimpleQueue
+
+    def __init__(self, publish_topic: str, subscription_topic: str):
         super().__init__('tensorrt_yolox_connector_node')
 
-        self.results_queue = results_queue
+        self.results_queue = queue.SimpleQueue()
 
         self.publisher = self.create_publisher(Image, publish_topic, 10)
         self.subscriber = self.create_subscription(DetectedObjectsWithFeature, subscription_topic, self.subscription_callback, 10)
@@ -27,48 +29,64 @@ class TensorrtYOLOXConnectorNode(Node):
         self.results_queue.put(msg)
 
 
-class TensorrtYOLOXConnector(InferenceConnector):
-
-    def run_node(self):
-        rclpy.spin(self.node)
-
-        self.node.destroy_node()
-        rclpy.shutdown()
+class TensorrtYOLOXConnector(InferenceConnector2D):
 
     def __init__(self, input_topic: str, output_topic: str):
         self.lock = threading.Lock()
-        self.results_queue = queue.SimpleQueue()
-
         self.bridge = CvBridge()
 
         rclpy.init()
 
-        self.node = TensorrtYOLOXConnectorNode(input_topic, output_topic, self.results_queue)
+        self.node = TensorrtYOLOXConnectorNode(input_topic, output_topic)
 
-        self.ros_thread = threading.Thread(target=self.run_node)
-        self.ros_thread.start()
+        ros_thread = threading.Thread(target=rclpy.spin, args=[self.node])
+        ros_thread.start()
+
+    def __del__(self):
+        self.node.destroy_node()
+        rclpy.shutdown()
+
+    @staticmethod
+    def parse_yolox_label(label: int) -> Label2D:
+        match(label):
+            case 0:
+                return Label2D.UNKNOWN
+            case 1:
+                return Label2D.CAR
+            case 2:
+                return Label2D.TRUCK
+            case 3:
+                return Label2D.BUS
+            case 4:
+                return Label2D.BICYCLE
+            case 5:
+                return Label2D.MOTORBIKE
+            case 6:
+                return Label2D.PEDESTRIAN
+            case 7:
+                return Label2D.ANIMAL
         
-    def runInference(self, image: np.ndarray) -> Optional[list[Detection]]:
+    def run_inference(self, data: np.ndarray) -> Optional[list[Detection2D]]:
         with self.lock:
-            msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
+            msg = self.bridge.cv2_to_imgmsg(data, "bgr8")
             self.node.publisher.publish(msg)
             
             try:
-                result = self.results_queue.get(timeout=5)
+                result = self.node.results_queue.get(timeout=1)
 
                 objects_with_feature: list[DetectedObjectWithFeature] = result.feature_objects
 
                 res = []
 
                 for i in range(len(objects_with_feature)):
-                    bbox = BBox.from_xywh(objects_with_feature[i].feature.roi.x_offset,
+                    bbox = BBox2D.from_xywh(objects_with_feature[i].feature.roi.x_offset,
                                           objects_with_feature[i].feature.roi.y_offset,
                                           objects_with_feature[i].feature.roi.width,
                                           objects_with_feature[i].feature.roi.height)
                     score = objects_with_feature[i].object.existence_probability
                     label = objects_with_feature[i].object.classification[0].label
 
-                    detection = Detection(bbox, score, Label(label))
+                    detection = Detection2D(bbox, score, self.parse_yolox_label(label))
 
                     res.append(detection)
 
