@@ -1,5 +1,6 @@
-import numpy as np
 from abc import ABC, abstractmethod
+
+import numpy as np
 
 from model_evaluator.detection import Detection2D, Detection3D
 

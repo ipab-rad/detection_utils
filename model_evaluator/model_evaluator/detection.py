@@ -19,7 +19,7 @@ class BBox2D:
         bbox.y2 = y2
 
         return bbox
-    
+
     @staticmethod
     def from_xywh(x: float, y: float, w: float, h: float) -> 'BBox2D':
         bbox = BBox2D()
@@ -30,7 +30,7 @@ class BBox2D:
         bbox.y2 = y + h
 
         return bbox
-    
+
     @staticmethod
     def from_cxcywh(cx: float, cy: float, w: float, h: float) -> 'BBox2D':
         bbox = BBox2D()
@@ -41,10 +41,10 @@ class BBox2D:
         bbox.y2 = cy + h / 2
 
         return bbox
-    
+
     def area(self) -> float:
         return (self.x2 - self.x1) * (self.y2 - self.y1)
-    
+
     def iou(self, other: 'BBox2D') -> float:
         left = max(self.x1, other.x1)
         top = max(self.y1, other.y1)
@@ -53,11 +53,11 @@ class BBox2D:
 
         if right < left or bottom < top:
             return 0.0
-        
+
         intersect_area = (right - left) * (bottom - top)
 
         return intersect_area / (self.area() + other.area() - intersect_area)
-    
+
 
 class Label2D(IntFlag):
     UNKNOWN = auto()
@@ -70,7 +70,9 @@ class Label2D(IntFlag):
     ANIMAL = auto()
 
     VEHICLE = CAR | TRUCK | BUS | MOTORBIKE
-    ALL = UNKNOWN | CAR | TRUCK | BUS | BICYCLE | MOTORBIKE | PEDESTRIAN | ANIMAL
+    ALL = (
+        UNKNOWN | CAR | TRUCK | BUS | BICYCLE | MOTORBIKE | PEDESTRIAN | ANIMAL
+    )
 
 
 class Detection2D:

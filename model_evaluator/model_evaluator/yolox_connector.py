@@ -1,16 +1,21 @@
+import threading
+import queue
+from typing import Optional
+
 import rclpy
 from rclpy.node import Node
 import numpy as np
-from typing import Optional
 from cv_bridge import CvBridge
-import threading
-import queue
 
 from sensor_msgs.msg import Image
-from tier4_perception_msgs.msg import DetectedObjectsWithFeature, DetectedObjectWithFeature
+from tier4_perception_msgs.msg import (
+    DetectedObjectsWithFeature,
+    DetectedObjectWithFeature,
+)
 
 from model_evaluator.inference_connector import InferenceConnector2D
 from model_evaluator.detection import Detection2D, BBox2D, Label2D
+
 
 class TensorrtYOLOXConnectorNode(Node):
 
@@ -22,8 +27,12 @@ class TensorrtYOLOXConnectorNode(Node):
         self.results_queue = queue.SimpleQueue()
 
         self.publisher = self.create_publisher(Image, publish_topic, 10)
-        self.subscriber = self.create_subscription(DetectedObjectsWithFeature, subscription_topic, self.subscription_callback, 10)
-
+        self.subscriber = self.create_subscription(
+            DetectedObjectsWithFeature,
+            subscription_topic,
+            self.subscription_callback,
+            10,
+        )
 
     def subscription_callback(self, msg: DetectedObjectsWithFeature):
         self.results_queue.put(msg)
@@ -48,7 +57,7 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
 
     @staticmethod
     def parse_yolox_label(label: int) -> Label2D:
-        match(label):
+        match (label):
             case 0:
                 return Label2D.UNKNOWN
             case 1:
@@ -65,28 +74,38 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
                 return Label2D.PEDESTRIAN
             case 7:
                 return Label2D.ANIMAL
-        
+
     def run_inference(self, data: np.ndarray) -> Optional[list[Detection2D]]:
         with self.lock:
             msg = self.bridge.cv2_to_imgmsg(data, "bgr8")
             self.node.publisher.publish(msg)
-            
+
             try:
                 result = self.node.results_queue.get(timeout=1)
 
-                objects_with_feature: list[DetectedObjectWithFeature] = result.feature_objects
+                objects_with_feature: list[DetectedObjectWithFeature] = (
+                    result.feature_objects
+                )
 
                 res = []
 
                 for i in range(len(objects_with_feature)):
-                    bbox = BBox2D.from_xywh(objects_with_feature[i].feature.roi.x_offset,
-                                          objects_with_feature[i].feature.roi.y_offset,
-                                          objects_with_feature[i].feature.roi.width,
-                                          objects_with_feature[i].feature.roi.height)
-                    score = objects_with_feature[i].object.existence_probability
-                    label = objects_with_feature[i].object.classification[0].label
+                    bbox = BBox2D.from_xywh(
+                        objects_with_feature[i].feature.roi.x_offset,
+                        objects_with_feature[i].feature.roi.y_offset,
+                        objects_with_feature[i].feature.roi.width,
+                        objects_with_feature[i].feature.roi.height,
+                    )
+                    score = objects_with_feature[
+                        i
+                    ].object.existence_probability
+                    label = (
+                        objects_with_feature[i].object.classification[0].label
+                    )
 
-                    detection = Detection2D(bbox, score, self.parse_yolox_label(label))
+                    detection = Detection2D(
+                        bbox, score, self.parse_yolox_label(label)
+                    )
 
                     res.append(detection)
 
