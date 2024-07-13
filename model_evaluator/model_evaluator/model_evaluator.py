@@ -117,12 +117,12 @@ def main():
         '/perception/object_recognition/detection/rois0',
     )
 
-    reader = WaymoDatasetReader2D()
+    reader = WaymoDatasetReader2D('/opt/ros_ws/rosbags/waymo/validation')
 
     data = reader.read_data()
 
     for i, (image, gts) in enumerate(data):
-        detections = connector.runInference(image)
+        detections = connector.run_inference(image)
         draw_bboxes(image, gts, detections, Label2D.ALL)
         cv2.imwrite(f'image{i}.png', image)
 
