@@ -14,6 +14,7 @@ contexts = [
     '1024360143612057520_3580_000_3600_000,1553735853662172',
 ]
 
+
 def parse_context_names_and_timestamps():
     lines = contexts
 

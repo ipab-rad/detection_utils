@@ -113,7 +113,7 @@ def draw_bboxes(image, gts, detections, included_labels=Label2D.ALL):
 
 def main():
     connector = TensorrtYOLOXConnector(
-        '/sensor/camera/lspf_r/image_raw',
+        '/sensor/camera/fsp_l/image_raw',
         '/perception/object_recognition/detection/rois0',
     )
 
@@ -123,6 +123,11 @@ def main():
 
     for i, (image, gts) in enumerate(data):
         detections = connector.run_inference(image)
+
+        if detections is None:
+            print('Inference failed')
+            continue
+
         draw_bboxes(image, gts, detections, Label2D.ALL)
         cv2.imwrite(f'image{i}.png', image)
 
@@ -138,7 +143,10 @@ def main():
 
             label_detections.sort(key=lambda x: x.score, reverse=True)
 
-            ious = calculate_ious_2d(label_detections, label_gts)
+            ious = calculate_ious_2d(
+                [detection.bbox for detection in label_detections],
+                [gt.bbox for gt in label_gts],
+            )
 
             tp, fp = get_tp_fp(ious, 0.5)
 

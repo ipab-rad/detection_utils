@@ -112,6 +112,7 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
                 return res
 
             except queue.Empty:
-                print("No result")
+                # TODO: Handle correctly, like throwing error
+                print("No result (timed out)")
 
                 return None
