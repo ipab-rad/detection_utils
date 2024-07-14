@@ -5,36 +5,34 @@ import dask.dataframe as dd
 from waymo_open_dataset import v2, label_pb2
 import cv2
 
-from model_evaluator.dataset_reader import DatasetReader
-from model_evaluator.detection import Detection2D, BBox2D, Label2D
-
-
-contexts = [
-    '1024360143612057520_3580_000_3600_000,1553735853462203',
-    '1024360143612057520_3580_000_3600_000,1553735853662172',
-]
-
-
-def parse_context_names_and_timestamps():
-    lines = contexts
-
-    context_names = {}
-    for line in lines:
-        context_name, timestamp = line.split(',')
-
-        timestamp = int(timestamp)
-
-        if context_name not in context_names:
-            context_names[context_name] = [timestamp]
-        else:
-            context_names[context_name].append(timestamp)
-
-    return context_names
-
-
+from model_evaluator.interfaces.dataset_reader import DatasetReader
+from model_evaluator.detection import Detection2D, Detection3D, BBox2D, Label2D
 
 
 class WaymoDatasetReader(DatasetReader):
+    def __init__(self, dataset_dir: str):
+        self.dataset_dir = dataset_dir
+
+        self.contexts = [
+            '1024360143612057520_3580_000_3600_000,1553735853462203',
+            '1024360143612057520_3580_000_3600_000,1553735853662172',
+        ]
+
+    def parse_context_names_and_timestamps(self):
+        context_names = {}
+        for line in self.contexts:
+            context_name, timestamp = line.split(',')
+
+            timestamp = int(timestamp)
+
+            if context_name not in context_names:
+                context_names[context_name] = [timestamp]
+            else:
+                context_names[context_name].append(timestamp)
+
+        return context_names
+
+
     @staticmethod
     def decode_image(image_component: v2.CameraImageComponent) -> np.ndarray:
         return cv2.imdecode(
@@ -74,15 +72,13 @@ class WaymoDatasetReader(DatasetReader):
 
         return detections
 
-    def __init__(self, dataset_dir: str):
-        self.dataset_dir = dataset_dir
 
     def read(self, tag, context_name):
         paths = glob.glob(f'{self.dataset_dir}/{tag}/{context_name}.parquet')
         return dd.read_parquet(paths)
 
-    def read_data(self) -> list[tuple[np.ndarray, list[Detection2D]]]:
-        context_names = parse_context_names_and_timestamps()
+    def read_data_2D(self) -> list[tuple[np.ndarray, list[Detection2D]]]:
+        context_names = self.parse_context_names_and_timestamps()
 
         output = []
 

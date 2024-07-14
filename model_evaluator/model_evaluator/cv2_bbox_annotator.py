@@ -1,5 +1,5 @@
 import cv2
-from model_evaluator.detection import BBox2D, Label2D
+from model_evaluator.interfaces.detection import BBox2D, Label2D
 
 def to_cv_pts(bbox: BBox2D):
     return (round(bbox.x1), round(bbox.y1)), (round(bbox.x2), round(bbox.y2))

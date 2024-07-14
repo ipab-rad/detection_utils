@@ -1,5 +1,5 @@
-from model_evaluator.waymo_reader import WaymoDatasetReader2D
-from model_evaluator.detection import BBox2D, Label2D
+from model_evaluator.waymo_reader import WaymoDatasetReader
+from model_evaluator.interfaces.detection import BBox2D, Label2D
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
 from model_evaluator.cv2_bbox_annotator import to_cv_pts, draw_bboxes, write_png_img
 from model_evaluator.metrics_calculator import get_tp_fp, calculate_ap,calculate_ious_2d
@@ -49,9 +49,9 @@ def main():
         '/perception/object_recognition/detection/rois0',
     )
 
-    reader = WaymoDatasetReader2D('/opt/ros_ws/rosbags/waymo/validation')
+    reader = WaymoDatasetReader('/opt/ros_ws/rosbags/waymo/validation')
 
-    data = reader.read_data()
+    data = reader.read_data_2D()
 
     for frame_counter, (image, gts) in enumerate(data):
         detections = connector.run_inference(image)

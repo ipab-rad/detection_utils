@@ -13,8 +13,8 @@ from tier4_perception_msgs.msg import (
     DetectedObjectWithFeature,
 )
 
-from model_evaluator.inference_connector import InferenceConnector2D
-from model_evaluator.detection import Detection2D, BBox2D, Label2D
+from model_evaluator.interfaces.inference_connector import InferenceConnector2D
+from model_evaluator.interfaces.detection import Detection2D, BBox2D, Label2D
 
 
 class TensorrtYOLOXConnectorNode(Node):

@@ -1,4 +1,4 @@
-from model_evaluator.detection import BBox2D
+from model_evaluator.interfaces.detection import BBox2D
 import numpy as np
 
 def calculate_ious_2d(
