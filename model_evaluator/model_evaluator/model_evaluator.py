@@ -1,8 +1,8 @@
 from model_evaluator.waymo_reader import WaymoDatasetReader
 from model_evaluator.interfaces.detection import BBox2D, Label2D
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
-from model_evaluator.cv2_bbox_annotator import to_cv_pts, draw_bboxes, write_png_img
-from model_evaluator.metrics_calculator import get_tp_fp, calculate_ap,calculate_ious_2d
+from model_evaluator.utils.cv2_bbox_annotator import to_cv_pts, draw_bboxes, write_png_img
+from model_evaluator.utils.metrics_calculator import get_tp_fp, calculate_ap,calculate_ious_2d
 import numpy as np
 
 def process_frame_results(image, gts, detections, frame_counter):

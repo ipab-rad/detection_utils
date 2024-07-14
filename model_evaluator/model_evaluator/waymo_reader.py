@@ -3,11 +3,10 @@ import glob
 import numpy as np
 import dask.dataframe as dd
 from waymo_open_dataset import v2, label_pb2
-import cv2
 
 from model_evaluator.interfaces.dataset_reader import DatasetReader
 from model_evaluator.detection import Detection2D, Detection3D, BBox2D, Label2D
-
+from model_evaluator.utils.decoders import decode_waymo_image,decode_waymo_camera_detections
 
 class WaymoDatasetReader(DatasetReader):
     def __init__(self, dataset_dir: str):
@@ -31,47 +30,6 @@ class WaymoDatasetReader(DatasetReader):
                 context_names[context_name].append(timestamp)
 
         return context_names
-
-
-    @staticmethod
-    def decode_image(image_component: v2.CameraImageComponent) -> np.ndarray:
-        return cv2.imdecode(
-            np.frombuffer(image_component.image, dtype=np.uint8),
-            cv2.IMREAD_COLOR,
-        )
-
-    @staticmethod
-    def decode_label_2D(label: int) -> Label2D:
-        match label:
-            case label_pb2.Label.TYPE_VEHICLE:
-                return Label2D.VEHICLE
-            case label_pb2.Label.TYPE_PEDESTRIAN:
-                return Label2D.PEDESTRIAN
-            case label_pb2.Label.TYPE_CYCLIST:
-                return Label2D.BICYCLE
-            case _:
-                return Label2D.UNKNOWN
-
-    @staticmethod
-    def decode_camera_detections(
-        box_component: v2.CameraBoxComponent,
-    ) -> list[Detection2D]:
-        detections = []
-
-        for cx, cy, w, h, label in zip(
-            box_component.box.center.x,
-            box_component.box.center.y,
-            box_component.box.size.x,
-            box_component.box.size.y,
-            box_component.type,
-        ):
-            bbox = BBox2D.from_cxcywh(cx, cy, w, h)
-            label = WaymoDatasetReader.decode_label_2D(label)
-
-            detections.append(Detection2D(bbox, 1.0, label))
-
-        return detections
-
 
     def read(self, tag, context_name):
         paths = glob.glob(f'{self.dataset_dir}/{tag}/{context_name}.parquet')
@@ -99,9 +57,38 @@ class WaymoDatasetReader(DatasetReader):
                     cam_image = v2.CameraImageComponent.from_dict(r)
                     cam_box = v2.CameraBoxComponent.from_dict(r)
 
-                    image = self.decode_image(cam_image)
-                    detections = self.decode_camera_detections(cam_box)
+                    image = decode_waymo_image(cam_image)
+                    detections = decode_waymo_camera_detections(cam_box)
 
                     output.append((image, detections))
+
+        return output
+
+    def read_data_3D(self) -> list[tuple[np.ndarray, list[Detection3D]]]:
+        context_names = self.parse_context_names_and_timestamps()
+
+        output = []
+
+        for context_name in context_names:
+            lidar_df = self.read('lidar', context_name)
+            lidar_box_df = self.read('lidar_box', context_name)
+
+            lidar_w_box_df = v2.merge(
+                lidar_df, lidar_box_df, right_group=True
+            )
+
+            for timestamp in context_names[context_name]:
+                frame_df = lidar_w_box_df.loc[
+                    lidar_w_box_df['key.frame_timestamp_micros'] == timestamp
+                ]
+
+                for _, r in frame_df.iterrows():
+                    point_cloud = v2.LiDARComponent.from_dict(r)
+                    lidar_box = v2.LiDARBoxComponent.from_dict(r)
+
+                    point_cloud = self.decode_waymo_point_cloud(point_cloud)
+                    detections = self.decode_waymo_lidar_detections(lidar_box)
+
+                    output.append((point_cloud, detections))
 
         return output

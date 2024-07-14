@@ -84,9 +84,3 @@ class Detection2D:
         self.bbox = bbox
         self.score = score
         self.label = label
-
-
-class Detection3D:
-
-    def __init__(self):
-        raise NotImplementedError
