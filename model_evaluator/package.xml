@@ -5,6 +5,7 @@
   <version>0.0.1</version>
   <description>Package for evaluation of Autoware detection models</description>
   <maintainer email="j.schulte-1@sms.ed.ac.uk">Julius Schulte</maintainer>
+  <maintainer email="callumsturnbull@hotmail.co.uk">Callum Turnbull</maintainer>
   <license>TODO: License declaration</license>
 
   <depend>cv_bridge</depend>
