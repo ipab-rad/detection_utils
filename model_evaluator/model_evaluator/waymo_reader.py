@@ -38,8 +38,6 @@ class WaymoDatasetReader(DatasetReader):
     def read_data_2D(self) -> list[tuple[np.ndarray, list[Detection2D]]]:
         context_names = self.parse_context_names_and_timestamps()
 
-        output = []
-
         for context_name in context_names:
             cam_image_df = self.read('camera_image', context_name)
             cam_box_df = self.read('camera_box', context_name)
@@ -60,9 +58,7 @@ class WaymoDatasetReader(DatasetReader):
                     image = decode_waymo_image(cam_image)
                     detections = decode_waymo_camera_detections(cam_box)
 
-                    output.append((image, detections))
-
-        return output
+                    yield image, detections
 
     def read_data_3D(self) -> list[tuple[np.ndarray, list[Detection3D]]]:
         context_names = self.parse_context_names_and_timestamps()
