@@ -5,7 +5,7 @@ import dask.dataframe as dd
 from waymo_open_dataset import v2, label_pb2
 import cv2
 
-from model_evaluator.dataset_reader import DatasetReader2D
+from model_evaluator.dataset_reader import DatasetReader
 from model_evaluator.detection import Detection2D, BBox2D, Label2D
 
 
@@ -32,19 +32,9 @@ def parse_context_names_and_timestamps():
     return context_names
 
 
-def parse_waymo_label(label: int) -> Label2D:
-    match label:
-        case label_pb2.Label.TYPE_VEHICLE:
-            return Label2D.VEHICLE
-        case label_pb2.Label.TYPE_PEDESTRIAN:
-            return Label2D.PEDESTRIAN
-        case label_pb2.Label.TYPE_CYCLIST:
-            return Label2D.BICYCLE
-        case _:
-            return Label2D.UNKNOWN
 
 
-class WaymoDatasetReader2D(DatasetReader2D):
+class WaymoDatasetReader(DatasetReader):
     @staticmethod
     def decode_image(image_component: v2.CameraImageComponent) -> np.ndarray:
         return cv2.imdecode(
@@ -53,7 +43,7 @@ class WaymoDatasetReader2D(DatasetReader2D):
         )
 
     @staticmethod
-    def decode_label(label: int) -> Label2D:
+    def decode_label_2D(label: int) -> Label2D:
         match label:
             case label_pb2.Label.TYPE_VEHICLE:
                 return Label2D.VEHICLE
@@ -65,7 +55,7 @@ class WaymoDatasetReader2D(DatasetReader2D):
                 return Label2D.UNKNOWN
 
     @staticmethod
-    def decode_detections(
+    def decode_camera_detections(
         box_component: v2.CameraBoxComponent,
     ) -> list[Detection2D]:
         detections = []
@@ -78,7 +68,7 @@ class WaymoDatasetReader2D(DatasetReader2D):
             box_component.type,
         ):
             bbox = BBox2D.from_cxcywh(cx, cy, w, h)
-            label = WaymoDatasetReader2D.decode_label(label)
+            label = WaymoDatasetReader.decode_label_2D(label)
 
             detections.append(Detection2D(bbox, 1.0, label))
 
@@ -114,7 +104,7 @@ class WaymoDatasetReader2D(DatasetReader2D):
                     cam_box = v2.CameraBoxComponent.from_dict(r)
 
                     image = self.decode_image(cam_image)
-                    detections = self.decode_detections(cam_box)
+                    detections = self.decode_camera_detections(cam_box)
 
                     output.append((image, detections))
 

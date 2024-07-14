@@ -57,7 +57,7 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
 
     @staticmethod
     def parse_yolox_label(label: int) -> Label2D:
-        match (label):
+        match label:
             case 0:
                 return Label2D.UNKNOWN
             case 1:
@@ -75,6 +75,20 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
             case 7:
                 return Label2D.ANIMAL
 
+    def detected_object_with_feature_to_detection2D(self, object_wf: DetectedObjectWithFeature):
+        bbox = BBox2D.from_xywh(
+            object_wf.feature.roi.x_offset,
+            object_wf.feature.roi.y_offset,
+            object_wf.feature.roi.width,
+            object_wf.feature.roi.height,
+        )
+        score = object_wf.object.existence_probability
+        label = object_wf.object.classification[0].label
+
+        return Detection2D(
+            bbox, score, self.parse_yolox_label(label)
+        )
+
     def run_inference(self, data: np.ndarray) -> Optional[list[Detection2D]]:
         with self.lock:
             msg = self.bridge.cv2_to_imgmsg(data, "bgr8")
@@ -83,33 +97,18 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
             try:
                 result = self.node.results_queue.get(timeout=1)
 
-                objects_with_feature: list[DetectedObjectWithFeature] = (
+                all_objects_with_feature: list[DetectedObjectWithFeature] = (
                     result.feature_objects
                 )
 
-                res = []
+                all_detections = []
 
-                for i in range(len(objects_with_feature)):
-                    bbox = BBox2D.from_xywh(
-                        objects_with_feature[i].feature.roi.x_offset,
-                        objects_with_feature[i].feature.roi.y_offset,
-                        objects_with_feature[i].feature.roi.width,
-                        objects_with_feature[i].feature.roi.height,
-                    )
-                    score = objects_with_feature[
-                        i
-                    ].object.existence_probability
-                    label = (
-                        objects_with_feature[i].object.classification[0].label
+                for object_wf in all_objects_with_feature:
+                    all_detections.append(
+                        self.detected_object_with_feature_to_detection2D(object_wf)
                     )
 
-                    detection = Detection2D(
-                        bbox, score, self.parse_yolox_label(label)
-                    )
-
-                    res.append(detection)
-
-                return res
+                return all_detections
 
             except queue.Empty:
                 # TODO: Handle correctly, like throwing error

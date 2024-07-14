@@ -5,15 +5,11 @@ import numpy as np
 from model_evaluator.detection import Detection2D, Detection3D
 
 
-class DatasetReader2D(ABC):
+class DatasetReader(ABC):
     # TODO: use generator
     @abstractmethod
-    def read_data(self) -> list[tuple[np.ndarray, list[Detection2D]]]:
+    def read_data_2D(self) -> list[tuple[np.ndarray, list[Detection2D]]]:
         raise NotImplementedError
 
-
-class DatasetReader3D(ABC):
-    # TODO: use generator
-    @abstractmethod
-    def read_data(self) -> list[tuple[np.ndarray, list[Detection3D]]]:
+    def read_data_3D(self) -> list[tuple[np.ndarray, list[Detection3D]]]:
         raise NotImplementedError

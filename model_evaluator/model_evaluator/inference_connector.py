@@ -8,7 +8,7 @@ from model_evaluator.detection import Detection2D, Detection3D
 
 class InferenceConnector2D(ABC):
     @abstractmethod
-    def run_inference(self, data: np.ndarray) -> Optional[list[Detection2D]]:
+    def run_inference_2D(self, data: np.ndarray) -> Optional[list[Detection2D]]:
         raise NotImplementedError
 
 
