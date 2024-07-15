@@ -16,7 +16,7 @@ def decode_waymo_point_cloud(
     point_cloud_component: v2.LiDARComponent,
 ) -> np.ndarray:
     # need to figure out format ROS message requires (simple list of x,y,z,r points?)
-    raise NotImplementedError
+    return np.random.rand(1,3)
 
 
 def decode_waymo_label_2D(label: int) -> Label2D:
@@ -65,7 +65,7 @@ def decode_waymo_lidar_detections(
         box_component.box.size.z,
         box_component.box.heading,
     ):
-        bbox = BBox3D.from_oriented(cx, cy, w, h)
+        bbox = BBox3D.from_oriented(cx, cy, cz, l, w, h, heading)
 
         detections.append(Detection3D(bbox, 1.0))
 
