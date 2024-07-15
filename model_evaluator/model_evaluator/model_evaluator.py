@@ -5,7 +5,9 @@ import numpy as np
 
 from model_evaluator.rosbag_reader import RosbagDatasetReader2D
 
-from model_evaluator.waymo_reader import WaymoDatasetReader2D, WaymoDatasetReader3D
+from model_evaluator.waymo_reader import (
+    WaymoDatasetReader2D,
+)
 from model_evaluator.interfaces.detection2D import Label2D
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
 from model_evaluator.utils.cv2_bbox_annotator import (
@@ -92,7 +94,11 @@ def main():
         '/perception/object_recognition/detection/rois0',
     )
 
-    reader = WaymoDatasetReader2D('/opt/ros_ws/rosbags/waymo/validation', '/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/2d_pvps_validation_frames.txt', [1])
+    reader = WaymoDatasetReader2D(
+        '/opt/ros_ws/rosbags/waymo/validation',
+        '/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/2d_pvps_validation_frames.txt',
+        [1],
+    )
 
     data = reader.read_data()
 

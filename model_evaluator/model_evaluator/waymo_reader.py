@@ -5,7 +5,10 @@ import numpy as np
 import dask.dataframe as dd
 from waymo_open_dataset import v2
 
-from model_evaluator.interfaces.dataset_reader import DatasetReader2D, DatasetReader3D
+from model_evaluator.interfaces.dataset_reader import (
+    DatasetReader2D,
+    DatasetReader3D,
+)
 from model_evaluator.interfaces.detection2D import Detection2D
 from model_evaluator.interfaces.detection3D import Detection3D
 from model_evaluator.utils.decoders import (
@@ -15,7 +18,8 @@ from model_evaluator.utils.decoders import (
     decode_waymo_lidar_detections,
 )
 
-class WaymoDatasetReaderBase():
+
+class WaymoDatasetReaderBase:
     def __init__(self, dataset_dir: str, context_name_timestamp_file: str):
         self.dataset_dir = dataset_dir
 
@@ -47,12 +51,19 @@ class WaymoDatasetReaderBase():
 
 
 class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
-    def __init__(self, dataset_dir: str, context_name_timestamp_file: str, included_cameras: list[int]):
+    def __init__(
+        self,
+        dataset_dir: str,
+        context_name_timestamp_file: str,
+        included_cameras: list[int],
+    ):
         super().__init__(dataset_dir, context_name_timestamp_file)
 
         self.included_cameras = included_cameras
 
-    def read_data(self) -> Generator[tuple[np.ndarray, list[Detection2D]], None, None]:
+    def read_data(
+        self,
+    ) -> Generator[tuple[np.ndarray, list[Detection2D]], None, None]:
         for context_name in self.contexts:
             cam_image_df = self.read('camera_image', context_name)
             cam_box_df = self.read('camera_box', context_name)
@@ -81,7 +92,9 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
 
 
 class WaymoDatasetReader3D(WaymoDatasetReaderBase, DatasetReader3D):
-    def read_data(self) -> Generator[tuple[np.ndarray, list[Detection3D]], None, None]:
+    def read_data(
+        self,
+    ) -> Generator[tuple[np.ndarray, list[Detection3D]], None, None]:
         for context_name in self.contexts:
             lidar_df = self.read('lidar', context_name)
             lidar_box_df = self.read('lidar_box', context_name)
