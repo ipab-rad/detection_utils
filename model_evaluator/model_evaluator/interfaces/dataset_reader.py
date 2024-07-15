@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from model_evaluator.detection import Detection2D, Detection3D
+from model_evaluator.interfaces.detection2D import Detection2D
+from model_evaluator.interfaces.detection3D import Detection3D
 
 
 class DatasetReader2D(ABC):

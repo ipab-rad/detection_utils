@@ -5,16 +5,17 @@
   <version>0.0.1</version>
   <description>Package for evaluation of Autoware detection models</description>
   <maintainer email="j.schulte-1@sms.ed.ac.uk">Julius Schulte</maintainer>
+  <maintainer email="callumsturnbull@hotmail.co.uk">Callum Turnbull</maintainer>
   <license>TODO: License declaration</license>
 
   <depend>cv_bridge</depend>
   <depend>python3-opencv</depend>
   <depend>rclpy</depend>
+  <depend>rosbag2_py</depend>
+  <depend>rosbag2_storage_mcap</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>tier4_perception_msgs</depend>
-  <depend>rosbag2_py</depend>
-  <depend>rosbag2_storage_mcap</depend>
   <!-- <depend>python3-waymo-open-dataset-tf-2-6-0-pip</depend> -->
 
   <test_depend>ament_copyright</test_depend>

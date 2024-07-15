@@ -1,13 +1,11 @@
-import glob
-
 import numpy as np
 import rosbag2_py
 from sensor_msgs.msg import Image
 from rclpy.serialization import deserialize_message
 from cv_bridge import CvBridge
 
-from model_evaluator.dataset_reader import DatasetReader2D
-from model_evaluator.detection import Detection2D, BBox2D, Label2D
+from model_evaluator.interfaces.dataset_reader import DatasetReader2D
+from model_evaluator.interfaces.detection2D import Detection2D, BBox2D, Label2D
 
 
 class RosbagDatasetReader2D(DatasetReader2D):
@@ -20,11 +18,12 @@ class RosbagDatasetReader2D(DatasetReader2D):
         reader.open(
             rosbag2_py.StorageOptions(uri=self.path, storage_id='mcap'),
             rosbag2_py.ConverterOptions(
-                input_serialization_format='cdr', output_serialization_format='cdr'
+                input_serialization_format='cdr',
+                output_serialization_format='cdr',
             ),
         )
 
-        topic_types = reader.get_all_topics_and_types()
+        # topic_types = reader.get_all_topics_and_types()
 
         # TODO: Add asserts
 
@@ -38,7 +37,18 @@ class RosbagDatasetReader2D(DatasetReader2D):
             if topic == '/sensor/camera/fsp_l/image_rect_color':
                 msg = deserialize_message(data, Image)
 
-                msgs.append((cv_bridge.imgmsg_to_cv2(msg), [Detection2D(BBox2D.from_xywh(0, 0, msg.width, msg.height), 1.0, Label2D.PEDESTRIAN)]))
+                msgs.append(
+                    (
+                        cv_bridge.imgmsg_to_cv2(msg),
+                        [
+                            Detection2D(
+                                BBox2D.from_xywh(0, 0, msg.width, msg.height),
+                                1.0,
+                                Label2D.PEDESTRIAN,
+                            )
+                        ],
+                    )
+                )
 
         return msgs
 
