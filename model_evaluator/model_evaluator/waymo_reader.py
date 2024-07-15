@@ -47,6 +47,11 @@ class WaymoDatasetReaderBase():
 
 
 class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
+    def __init__(self, dataset_dir: str, context_name_timestamp_file: str, included_cameras: list[int]):
+        super().__init__(dataset_dir, context_name_timestamp_file)
+
+        self.included_cameras = included_cameras
+
     def read_data(self) -> Generator[tuple[np.ndarray, list[Detection2D]], None, None]:
         for context_name in self.contexts:
             cam_image_df = self.read('camera_image', context_name)
@@ -59,6 +64,10 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
             for timestamp in self.contexts[context_name]:
                 frame_df = image_w_box_df.loc[
                     image_w_box_df['key.frame_timestamp_micros'] == timestamp
+                ]
+
+                frame_df = frame_df.loc[
+                    frame_df['key.camera_name'].isin(self.included_cameras)
                 ]
 
                 for _, r in frame_df.iterrows():
