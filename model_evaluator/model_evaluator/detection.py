@@ -70,6 +70,7 @@ class Label2D(IntFlag):
     ANIMAL = auto()
 
     VEHICLE = CAR | TRUCK | BUS | MOTORBIKE
+    VRU = BICYCLE | PEDESTRIAN | ANIMAL
     ALL = (
         UNKNOWN | CAR | TRUCK | BUS | BICYCLE | MOTORBIKE | PEDESTRIAN | ANIMAL
     )

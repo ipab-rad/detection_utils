@@ -1,8 +1,14 @@
+import re
+import glob
+
+import cv2
+import numpy as np
+
+from model_evaluator.rosbag_reader import RosbagDatasetReader2D
 from model_evaluator.waymo_reader import WaymoDatasetReader2D
 from model_evaluator.detection import BBox2D, Label2D
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
-import cv2
-import numpy as np
+
 
 
 def calculate_ious_2d(
@@ -56,7 +62,11 @@ def calculate_ap(tp, fp, num_samples):
     fp_cumsum = np.cumsum(fp)
 
     precisions = tp_cumsum / (tp_cumsum + fp_cumsum)
-    recalls = tp_cumsum / num_samples
+
+    if num_samples == 0:
+        recalls = tp_cumsum
+    else:
+        recalls = tp_cumsum / num_samples
 
     precisions = np.concatenate(([0], precisions, [0]))
     recalls = np.concatenate(([0], recalls, [1]))
@@ -112,6 +122,29 @@ def draw_bboxes(image, gts, detections, included_labels=Label2D.ALL):
 
 
 def main():
+    pattern = re.compile(r'.*/(?P<date>\d{4}_\d{2}_\d{2})-(?P<time>\d{2}_\d{2}_\d{2})_(?P<name>.+).mcap')
+    name_pattern = r'(?P<distance>\d+m)_(?P<count>\d)_(?P<type>(\w|_)+)_(?P<take>\d)_(?P<bag_no>\d)'
+
+    paths = glob.glob('/opt/ros_ws/rosbags/kings_buildings_data/**', recursive=True)
+
+    for path in paths:
+
+        match = pattern.match(path)
+
+        if match:
+            date = match.group('date')
+            time = match.group('time')
+            name = match.group('name')
+
+            print(name)
+
+    exit()
+
+    rosbag_reader = RosbagDatasetReader2D('/opt/ros_ws/rosbags/kings_buildings_data/2024_07_12-10_58_56_5m_1_ped_0/2024_07_12-10_58_39_5m_1_ped_0/2024_07_12-10_58_39_5m_1_ped_0_0.mcap')
+
+    data_ros = rosbag_reader.read_data()
+
+
     connector = TensorrtYOLOXConnector(
         '/sensor/camera/fsp_l/image_raw',
         '/perception/object_recognition/detection/rois0',
@@ -121,19 +154,20 @@ def main():
 
     data = reader.read_data()
 
-    for i, (image, gts) in enumerate(data):
+    for i, (image, gts) in enumerate(data_ros):
         detections = connector.run_inference(image)
 
         if detections is None:
             print('Inference failed')
             continue
 
-        draw_bboxes(image, gts, detections, Label2D.ALL)
-        cv2.imwrite(f'image{i}.png', image)
+        if i % int(len(data_ros) / 10) == 0:
+            draw_bboxes(image, gts, detections, Label2D.VRU)
+            #cv2.imwrite(f'image{i}.png', image)
 
         aps = {}
 
-        for label in [Label2D.PEDESTRIAN, Label2D.BICYCLE, Label2D.VEHICLE]:
+        for label in [Label2D.PEDESTRIAN, Label2D.BICYCLE]:
             label_gts = [gt for gt in gts if gt.label in label]
             label_detections = [
                 detection
