@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Generator
 
 import numpy as np
 
@@ -7,14 +8,12 @@ from model_evaluator.interfaces.detection3D import Detection3D
 
 
 class DatasetReader2D(ABC):
-    # TODO: use generator
     @abstractmethod
-    def read_data(self) -> list[tuple[np.ndarray, list[Detection2D]]]:
+    def read_data(self) -> Generator[tuple[np.ndarray, list[Detection2D]], None, None]:
         raise NotImplementedError
 
 
 class DatasetReader3D(ABC):
-    # TODO: use generator
     @abstractmethod
-    def read_data(self) -> list[tuple[np.ndarray, list[Detection3D]]]:
+    def read_data(self) -> Generator[tuple[np.ndarray, list[Detection3D]], None, None]:
         raise NotImplementedError
