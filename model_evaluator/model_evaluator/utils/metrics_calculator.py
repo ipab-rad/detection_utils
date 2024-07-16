@@ -59,6 +59,31 @@ def get_tp_fp(
 
     return tp, fp
 
+def get_unmatched_tp_fp(
+    ious: np.ndarray, threshold: float
+) -> tuple[np.ndarray, np.ndarray]:
+    num_detections = ious.shape[0]
+    num_gts = ious.shape[1]
+
+    tp = np.zeros(num_detections)
+    fp = np.zeros(num_detections)
+
+    for i in range(num_detections):
+        max_iou = 0
+
+        for j in range(num_gts):
+            iou = ious[i, j]
+
+            if iou > max_iou:
+                max_iou = iou
+
+        if max_iou >= threshold:
+            tp[i] = 1
+        else:
+            fp[i] = 1
+
+    return tp, fp
+
 
 def calculate_ap(tp, fp, num_samples):
     tp_cumsum = np.cumsum(tp)
