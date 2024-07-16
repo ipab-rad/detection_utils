@@ -1,7 +1,4 @@
 from itertools import islice
-import re
-import glob
-
 import numpy as np
 import cv2
 import imageio
@@ -25,34 +22,7 @@ from model_evaluator.utils.metrics_calculator import (
     calculate_ious_2d,
 )
 
-def get_rosbags(directory):
-    pattern = re.compile(
-        r'.*/(?P<date>\d{4}_\d{2}_\d{2})-(?P<time>\d{2}_\d{2}_\d{2})_(?P<name>.+).mcap'
-    )
-    name_pattern = re.compile(
-        r'(?P<distance>\d+m)_(?P<count>\d)_(?P<type>(\w|_)+)_(?P<take>\d)_(?P<bag_no>\d)'
-    )
-
-    paths = glob.glob(
-        f'{directory}/**', recursive=True
-    )
-
-    rosbags = []
-
-    for path in paths:
-        match = pattern.match(path)
-
-        if match:
-            name = match.group('name')
-
-            name_match = name_pattern.match(name)
-
-            if name_match:
-                rosbags.append((path, {
-                    Label2D.PEDESTRIAN: int(name_match.group('count'))
-                }))
-
-    return rosbags
+from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
 
 def process_images(data, connector, gif_path=None, iou_thresholds=None, tp_fp_function=get_tp_fp):
     images = []
@@ -106,19 +76,12 @@ def main():
         '/perception/object_recognition/detection/rois0',
     )
 
-    rosbag_reader = RosbagDatasetReader2D(
-        '/opt/ros_ws/rosbags/kings_buildings_data/2024_07_12-10_58_56_5m_1_ped_0/2024_07_12-10_58_56_5m_1_ped_0_0.mcap',
-        {
-            Label2D.PEDESTRIAN: 1
-        }
-    )
+    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
+    rosbag_reader = RosbagDatasetReader2D(rosbags[0].path, rosbags[0].expectations())
 
-    rosbags = get_rosbags('/opt/ros_ws/rosbags/kings_buildings_data')
-
-    rosbag_reader = RosbagDatasetReader2D(rosbags[0][0], rosbags[0][1])
     print(f'rosbag: {rosbag_reader.path} - expected VRUS: {rosbag_reader.expectations[Label2D.PEDESTRIAN]}')
     rosbag_data = rosbag_reader.read_data()
-
+    
     rosbag_maps = process_images(rosbag_data, connector, 'rosbag.gif', {Label2D.PEDESTRIAN: 0.0}, get_unmatched_tp_fp)
 
     rosbag_raw_mAP = np.mean(rosbag_maps)

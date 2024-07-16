@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from model_evaluator.interfaces.detection2D import Detection2D, BBox2D, Label2D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
-
+from sensor_msgs.msg import PointCloud2
 
 def decode_waymo_image(image_component: v2.CameraImageComponent) -> np.ndarray:
     return cv2.imdecode(
@@ -14,9 +14,8 @@ def decode_waymo_image(image_component: v2.CameraImageComponent) -> np.ndarray:
 
 def decode_waymo_point_cloud(
     point_cloud_component: v2.LiDARComponent,
-) -> np.ndarray:
-    # need to figure out format ROS message requires (simple list of x,y,z,r points?)
-    return np.random.rand(1, 3)
+) -> PointCloud2:
+    return PointCloud2()
 
 
 def decode_waymo_label_2D(label: int) -> Label2D:

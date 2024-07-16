@@ -13,6 +13,7 @@
   <depend>rclpy</depend>
   <depend>rosbag2_py</depend>
   <depend>rosbag2_storage_mcap</depend>
+  <depend>ros_numpy</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>tier4_perception_msgs</depend>
