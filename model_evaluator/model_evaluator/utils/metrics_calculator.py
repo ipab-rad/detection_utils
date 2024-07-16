@@ -65,7 +65,11 @@ def calculate_ap(tp, fp, num_samples):
     fp_cumsum = np.cumsum(fp)
 
     precisions = tp_cumsum / (tp_cumsum + fp_cumsum)
-    recalls = tp_cumsum / num_samples
+
+    if num_samples > 0:
+        recalls = tp_cumsum / num_samples
+    else:
+        recalls = np.zeros_like(tp)
 
     precisions = np.concatenate(([0], precisions, [0]))
     recalls = np.concatenate(([0], recalls, [1]))
