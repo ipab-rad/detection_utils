@@ -12,6 +12,7 @@ from tier4_perception_msgs.msg import (
     DetectedObjectsWithFeature,
     DetectedObjectWithFeature,
 )
+from autoware_perception_msgs.msg import ObjectClassification
 
 from model_evaluator.interfaces.inference_connector import InferenceConnector2D
 from model_evaluator.interfaces.detection2D import Detection2D, BBox2D, Label2D
@@ -57,23 +58,24 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
 
     @staticmethod
     def parse_yolox_label(label: int) -> Label2D:
+        
         match label:
-            case 0:
+            case ObjectClassification.UNKNOWN:
                 return Label2D.UNKNOWN
-            case 1:
+            case ObjectClassification.CAR:
                 return Label2D.CAR
-            case 2:
+            case ObjectClassification.TRUCK:
                 return Label2D.TRUCK
-            case 3:
+            case ObjectClassification.BUS:
                 return Label2D.BUS
-            case 4:
+            case ObjectClassification.BICYCLE:
                 return Label2D.BICYCLE
-            case 5:
-                return Label2D.MOTORBIKE
-            case 6:
+            case ObjectClassification.MOTORCYCLE:
+                return Label2D.MOTORCYCLE
+            case ObjectClassification.PEDESTRIAN:
                 return Label2D.PEDESTRIAN
-            case 7:
-                return Label2D.ANIMAL
+            case _:
+                return Label2D.UNKNOWN
 
     def detected_object_with_feature_to_detection2D(
         self, object_wf: DetectedObjectWithFeature
