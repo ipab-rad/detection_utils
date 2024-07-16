@@ -12,7 +12,7 @@ def draw_bboxes(image, gts, detections, included_labels=Label2D.ALL):
             continue
 
         pt1, pt2 = to_cv_pts(gt.bbox)
-        cv2.rectangle(image, pt1, pt2, (0, 0, 255), 2)
+        cv2.rectangle(image, pt1, pt2, (0, 255, 0), 2)
 
         cv2.putText(
             image,
@@ -20,7 +20,7 @@ def draw_bboxes(image, gts, detections, included_labels=Label2D.ALL):
             (pt1[0], pt1[1] - 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.9,
-            (0, 0, 255),
+            (0, 255, 0),
             2,
         )
 
@@ -29,7 +29,7 @@ def draw_bboxes(image, gts, detections, included_labels=Label2D.ALL):
             continue
 
         pt1, pt2 = to_cv_pts(detection.bbox)
-        cv2.rectangle(image, pt1, pt2, (0, 255, 0), 2)
+        cv2.rectangle(image, pt1, pt2, (0, 0, 255), 2)
 
         cv2.putText(
             image,
@@ -37,7 +37,7 @@ def draw_bboxes(image, gts, detections, included_labels=Label2D.ALL):
             (pt1[0], pt1[1] - 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.9,
-            (0, 255, 0),
+            (0, 0, 255),
             2,
         )
 
