@@ -2,17 +2,17 @@ from typing import Generator
 
 import numpy as np
 import rosbag2_py
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, PointCloud2
 from rclpy.serialization import deserialize_message
 from cv_bridge import CvBridge
 
-from model_evaluator.interfaces.dataset_reader import DatasetReader2D, DatasetReader3D
+from model_evaluator.interfaces.dataset_reader import (
+    DatasetReader2D,
+    DatasetReader3D,
+)
 from model_evaluator.interfaces.detection2D import Detection2D, BBox2D, Label2D
-from model_evaluator.interfaces.detection2D import Detection3D, BBox3D
+from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
 
-from sensor_msgs.msg import PointCloud2
-
-from typing import Generator
 
 class RosbagDatasetReader2D(DatasetReader2D):
 
@@ -21,7 +21,9 @@ class RosbagDatasetReader2D(DatasetReader2D):
 
         self.expectations = expectations
 
-    def read_data(self) -> Generator[tuple[np.ndarray, list[Detection2D]], None, None]:
+    def read_data(
+        self,
+    ) -> Generator[tuple[np.ndarray, list[Detection2D]], None, None]:
         reader = rosbag2_py.SequentialReader()
         reader.open(
             rosbag2_py.StorageOptions(uri=self.path, storage_id='mcap'),
@@ -60,12 +62,13 @@ class RosbagDatasetReader2D(DatasetReader2D):
                 yield image, gts
 
 
-
 class RosbagDatasetReader3D(DatasetReader3D):
     def __init__(self, path):
         self.path = path
 
-    def read_data(self) -> Generator[tuple[PointCloud2, list[Detection3D]], None, None]:
+    def read_data(
+        self,
+    ) -> Generator[tuple[PointCloud2, list[Detection3D]], None, None]:
         reader = rosbag2_py.SequentialReader()
         reader.open(
             rosbag2_py.StorageOptions(uri=self.path, storage_id='mcap'),
@@ -73,7 +76,7 @@ class RosbagDatasetReader3D(DatasetReader3D):
                 input_serialization_format='cdr',
                 output_serialization_format='cdr',
             ),
-                        )
+        )
 
         # topic_types = reader.get_all_topics_and_types()
 
@@ -88,6 +91,6 @@ class RosbagDatasetReader3D(DatasetReader3D):
                 msg = deserialize_message(data, PointCloud2)
 
                 # TODO look up bounding boxes from file
-                bounding_boxes = None
+                bounding_boxes = [BBox3D()]
 
                 yield msg, bounding_boxes

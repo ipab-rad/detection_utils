@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 class BBox3D:
     # TODO: Add asserts
 
@@ -56,14 +57,13 @@ class BBox3D:
         bbox = BBox3D()
 
         corners = torch.tensor(
-            [
-                [vertex.x, vertex.y, vertex.z] for vertex in footprint
-            ],
-            dtype=torch.float32
+            [[vertex.x, vertex.y, vertex.z] for vertex in footprint],
+            dtype=torch.float32,
         )
 
         bbox.corners = corners
         return bbox
+
 
 class Detection3D:
     bbox: BBox3D

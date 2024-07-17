@@ -5,16 +5,26 @@ from model_evaluator.interfaces.detection2D import Label2D
 
 
 class KBRosbagMetaData:
-    path:str
-    date:str
-    time:str
-    distance:str
-    count:str
-    vru_type:str
-    take:str
-    bag_no:str
+    path: str
+    date: str
+    time: str
+    distance: str
+    count: str
+    vru_type: str
+    take: str
+    bag_no: str
 
-    def __init__(self, path:str,date:str,time:str,distance:str,count:str,vru_type:str,take:str,bag_no:str):
+    def __init__(
+        self,
+        path: str,
+        date: str,
+        time: str,
+        distance: str,
+        count: str,
+        vru_type: str,
+        take: str,
+        bag_no: str,
+    ):
         self.path = path
         self.date = date
         self.time = time
@@ -35,12 +45,10 @@ class KBRosbagMetaData:
         return self.__str__()
 
     def expectations(self):
-        return {
-            Label2D.PEDESTRIAN: int(self.count)
-        }
+        return {Label2D.PEDESTRIAN: int(self.count)}
 
 
-def parse(path:str):
+def parse(path: str):
     pattern = re.compile(
         r'.*/(?P<date>\d{4}_\d{2}_\d{2})-(?P<time>\d{2}_\d{2}_\d{2})_(?P<name>.+).mcap'
     )
@@ -67,17 +75,14 @@ def parse(path:str):
     take = match.group('take')
     bag_no = match.group('bag_no')
 
-    return KBRosbagMetaData(path, date,time,distance,count,vru_type,take,bag_no)
-
-
-
-def match_rosbags_in_path(path:str) -> list[KBRosbagMetaData]:
-    paths = glob.glob(
-        f'{path}/**', recursive=True
+    return KBRosbagMetaData(
+        path, date, time, distance, count, vru_type, take, bag_no
     )
 
-    all_metadata = [
-        parse(path) for path in paths
-    ]
+
+def match_rosbags_in_path(path: str) -> list[KBRosbagMetaData]:
+    paths = glob.glob(f'{path}/**', recursive=True)
+
+    all_metadata = [parse(path) for path in paths]
 
     return [x for x in all_metadata if x is not None]

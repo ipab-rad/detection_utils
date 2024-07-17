@@ -58,7 +58,7 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
 
     @staticmethod
     def parse_yolox_label(label: int) -> Label2D:
-        
+
         match label:
             case ObjectClassification.UNKNOWN:
                 return Label2D.UNKNOWN

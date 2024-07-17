@@ -20,7 +20,9 @@ class LiDARConnectorNode(Node):
 
     results_queue: queue.SimpleQueue
 
-    def __init__(self, node_name: str, publish_topic: str, subscription_topic: str):
+    def __init__(
+        self, node_name: str, publish_topic: str, subscription_topic: str
+    ):
         super().__init__(node_name)
 
         self.results_queue = queue.SimpleQueue()
@@ -38,7 +40,7 @@ class LiDARConnectorNode(Node):
 
 
 class LiDARConnector(InferenceConnector3D):
-    def __init__(self, node_name:str, input_topic: str, output_topic: str):
+    def __init__(self, node_name: str, input_topic: str, output_topic: str):
         self.lock = threading.Lock()
         self.bridge = CvBridge()
 
@@ -53,13 +55,8 @@ class LiDARConnector(InferenceConnector3D):
         self.node.destroy_node()
         rclpy.shutdown()
 
-
-    def detected_object_to_detection3D(
-        self, det_object: DetectedObject
-    ):
-        bbox = BBox3D.from_footprint(
-            det_object.shape.footprint
-        )
+    def detected_object_to_detection3D(self, det_object: DetectedObject):
+        bbox = BBox3D.from_footprint(det_object.shape.footprint)
         score = det_object.existence_probability
 
         return Detection3D(bbox, score)
@@ -71,13 +68,12 @@ class LiDARConnector(InferenceConnector3D):
             try:
                 result = self.node.results_queue.get(timeout=1)
 
-                all_objects: list[DetectedObject] = (
-                    result.objects
-                )
+                all_objects: list[DetectedObject] = result.objects
 
-                return [self.detected_object_to_detection3D(
-                            det_object
-                        ) for det_object in all_objects]
+                return [
+                    self.detected_object_to_detection3D(det_object)
+                    for det_object in all_objects
+                ]
 
             except queue.Empty:
                 # TODO: Handle correctly, like throwing error

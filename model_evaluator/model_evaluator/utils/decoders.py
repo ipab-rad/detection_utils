@@ -5,6 +5,7 @@ from model_evaluator.interfaces.detection2D import Detection2D, BBox2D, Label2D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
 from sensor_msgs.msg import PointCloud2
 
+
 def decode_waymo_image(image_component: v2.CameraImageComponent) -> np.ndarray:
     return cv2.imdecode(
         np.frombuffer(image_component.image, dtype=np.uint8),
