@@ -38,7 +38,6 @@ class LiDARConnectorNode(Node):
 class LiDARConnector(InferenceConnector3D):
     def __init__(self, node_name: str, input_topic: str, output_topic: str):
         self.lock = threading.Lock()
-        self.bridge = CvBridge()
 
         rclpy.init()
 
