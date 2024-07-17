@@ -11,7 +11,6 @@
   <depend>cv_bridge</depend>
   <depend>python3-opencv</depend>
   <depend>rclpy</depend>
-  <depend>ros_numpy</depend>
   <depend>rosbag2_py</depend>
   <depend>rosbag2_storage_mcap</depend>
   <depend>sensor_msgs</depend>

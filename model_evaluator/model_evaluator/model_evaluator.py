@@ -5,13 +5,14 @@ import cv2
 import imageio
 
 
-from model_evaluator.rosbag_reader import RosbagDatasetReader2D
+from model_evaluator.rosbag_reader import RosbagDatasetReader2D, RosbagDatasetReader3D
 
 from model_evaluator.waymo_reader import (
     WaymoDatasetReader2D,
 )
 from model_evaluator.interfaces.detection2D import Label2D
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
+from model_evaluator.lidar_connector import LiDARConnector
 from model_evaluator.utils.cv2_bbox_annotator import (
     draw_bboxes,
 )
@@ -88,8 +89,21 @@ def process_images(
 
     return mean_avg_precisions
 
+def process_rosbags_3D(connector):
+    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
+    print(rosbags[0])
 
-def main():
+    rosbag_reader = RosbagDatasetReader3D(
+        rosbags[0].path
+    )
+
+    rosbag_data = rosbag_reader.read_data()
+
+    point_cloud, bboxes = next(rosbag_data)
+
+    detections = connector.run_inference(point_cloud)
+
+def camera_run():
     connector = TensorrtYOLOXConnector(
         '/sensor/camera/fsp_l/image_rect_color',
         '/perception/object_recognition/detection/rois0',
@@ -131,3 +145,18 @@ def main():
     waymo_mAP = np.mean(waymo_maps)
 
     print(f'{waymo_mAP=}')
+
+def lidar_run():
+    connector = LiDARConnector(
+        'lidar_centerpoint',
+        '/sensor/lidar/top/points',
+        '/perception/object_recognition/detection/centerpoint/objects',
+    )
+
+    process_rosbags_3D(connector)
+
+def main():
+    # camera_run()
+
+    lidar_run()
+

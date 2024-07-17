@@ -69,11 +69,11 @@ def parse(path: str):
     if not name_match:
         return
 
-    distance = match.group('distance')
-    count = match.group('count')
-    vru_type = match.group('type')
-    take = match.group('take')
-    bag_no = match.group('bag_no')
+    distance = name_match.group('distance')
+    count = name_match.group('count')
+    vru_type = name_match.group('type')
+    take = name_match.group('take')
+    bag_no = name_match.group('bag_no')
 
     return KBRosbagMetaData(
         path, date, time, distance, count, vru_type, take, bag_no

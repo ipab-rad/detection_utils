@@ -136,8 +136,7 @@ class RosbagDatasetReader3D(DatasetReader3D):
         while reader.has_next():
             topic, data, timestamp = reader.read_next()
 
-            # TODO change to LiDAR topic
-            if topic == '/sensor/camera/fsp_l/image_rect_color':
+            if topic == '/sensor/lidar/top/points':
                 # already in appropriate format
                 msg = deserialize_message(data, PointCloud2)
 
