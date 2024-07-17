@@ -5,13 +5,14 @@ import cv2
 import imageio
 
 
-from model_evaluator.rosbag_reader import RosbagDatasetReader2D
+from model_evaluator.rosbag_reader import RosbagDatasetReader2D, RosbagDatasetReader3D
 
 from model_evaluator.waymo_reader import (
     WaymoDatasetReader2D,
 )
 from model_evaluator.interfaces.detection2D import Label2D
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
+from model_evaluator.lidar_connector import LiDARConnector
 from model_evaluator.utils.cv2_bbox_annotator import (
     draw_bboxes,
 )
@@ -89,30 +90,18 @@ def process_images(
     return mean_avg_precisions
 
 def process_rosbags(connector):
-    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags')
-    rosbag_reader = RosbagDatasetReader2D(
-        rosbags[0].path, rosbags[0].expectations()
+    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
+    print(rosbags[0])
+
+    rosbag_reader = RosbagDatasetReader3D(
+        rosbags[0].path
     )
 
-    print(
-        f'rosbag: {rosbag_reader.path} - expected VRUS: {rosbag_reader.expectations[Label2D.PEDESTRIAN]}'
-    )
     rosbag_data = rosbag_reader.read_data()
 
-    rosbag_maps = process_images(
-        rosbag_data,
-        connector,
-        'rosbag.gif',
-        {Label2D.PEDESTRIAN: 0.0},
-        get_unmatched_tp_fp,
-    )
+    point_cloud, bboxes = next(rosbag_data)
 
-    rosbag_raw_mAP = np.mean(rosbag_maps)
-
-    cut_off = len(rosbag_maps) // 3
-    rosbag_mAP = np.mean(rosbag_maps[cut_off:-cut_off])
-
-    print(f'{rosbag_raw_mAP=}, {rosbag_mAP=}')
+    detections = connector.run_inference(point_cloud)
 
 def process_waymo(connector):
     waymo_reader = WaymoDatasetReader2D(
@@ -128,8 +117,9 @@ def process_waymo(connector):
     print(f'{waymo_mAP=}')
 
 def main():
-    connector = TensorrtYOLOXConnector(
-        '/sensor/camera/fsp_l/image_rect_color',
+    connector = LiDARConnector(
+        'lidar_centerpoint',
+        '/sensor/lidar/top/points',
         '/perception/object_recognition/detection/rois0',
     )
 
