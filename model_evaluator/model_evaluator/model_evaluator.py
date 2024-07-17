@@ -89,7 +89,7 @@ def process_images(
 
     return mean_avg_precisions
 
-def process_rosbags(connector):
+def process_rosbags_3D(connector):
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
     print(rosbags[0])
 
@@ -103,7 +103,37 @@ def process_rosbags(connector):
 
     detections = connector.run_inference(point_cloud)
 
-def process_waymo(connector):
+def camera_run():
+    connector = TensorrtYOLOXConnector(
+        '/sensor/camera/fsp_l/image_rect_color',
+        '/perception/object_recognition/detection/rois0',
+    )
+
+    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
+    rosbag_reader = RosbagDatasetReader2D(
+        rosbags[0].path, rosbags[0].expectations()
+    )
+
+    print(
+        f'rosbag: {rosbag_reader.path} - expected VRUS: {rosbag_reader.expectations[Label2D.PEDESTRIAN]}'
+    )
+    rosbag_data = rosbag_reader.read_data()
+
+    rosbag_maps = process_images(
+        rosbag_data,
+        connector,
+        'rosbag.gif',
+        {Label2D.PEDESTRIAN: 0.0},
+        get_unmatched_tp_fp,
+    )
+
+    rosbag_raw_mAP = np.mean(rosbag_maps)
+
+    cut_off = len(rosbag_maps) // 3
+    rosbag_mAP = np.mean(rosbag_maps[cut_off:-cut_off])
+
+    print(f'{rosbag_raw_mAP=}, {rosbag_mAP=}')
+
     waymo_reader = WaymoDatasetReader2D(
         '/opt/ros_ws/rosbags/waymo/validation',
         '/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/2d_pvps_validation_frames.txt',
@@ -116,14 +146,17 @@ def process_waymo(connector):
 
     print(f'{waymo_mAP=}')
 
-def main():
+def lidar_run():
     connector = LiDARConnector(
         'lidar_centerpoint',
         '/sensor/lidar/top/points',
-        '/perception/object_recognition/detection/rois0',
+        '/perception/object_recognition/detection/centerpoint/objects',
     )
 
-    process_rosbags(connector)
+    process_rosbags_3D(connector)
 
-    # process_waymo(connector)
+def main():
+    # camera_run()
+
+    lidar_run()
 
