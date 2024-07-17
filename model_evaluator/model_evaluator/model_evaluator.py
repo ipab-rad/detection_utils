@@ -88,14 +88,8 @@ def process_images(
 
     return mean_avg_precisions
 
-
-def main():
-    connector = TensorrtYOLOXConnector(
-        '/sensor/camera/fsp_l/image_rect_color',
-        '/perception/object_recognition/detection/rois0',
-    )
-
-    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
+def process_rosbags(connector):
+    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags')
     rosbag_reader = RosbagDatasetReader2D(
         rosbags[0].path, rosbags[0].expectations()
     )
@@ -120,6 +114,7 @@ def main():
 
     print(f'{rosbag_raw_mAP=}, {rosbag_mAP=}')
 
+def process_waymo(connector):
     waymo_reader = WaymoDatasetReader2D(
         '/opt/ros_ws/rosbags/waymo/validation',
         '/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/2d_pvps_validation_frames.txt',
@@ -131,3 +126,14 @@ def main():
     waymo_mAP = np.mean(waymo_maps)
 
     print(f'{waymo_mAP=}')
+
+def main():
+    connector = TensorrtYOLOXConnector(
+        '/sensor/camera/fsp_l/image_rect_color',
+        '/perception/object_recognition/detection/rois0',
+    )
+
+    process_rosbags(connector)
+
+    # process_waymo(connector)
+
