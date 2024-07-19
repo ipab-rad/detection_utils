@@ -1,4 +1,4 @@
-from enum import IntFlag, auto
+from enum import Flag, auto
 
 
 class BBox2D:
@@ -59,7 +59,7 @@ class BBox2D:
         return intersect_area / (self.area() + other.area() - intersect_area)
 
 
-class Label2D(IntFlag):
+class Label2D(Flag):
     UNKNOWN = auto()
     CAR = auto()
     TRUCK = auto()
