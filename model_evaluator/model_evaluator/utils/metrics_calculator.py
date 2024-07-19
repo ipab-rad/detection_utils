@@ -1,9 +1,9 @@
 from model_evaluator.interfaces.detection2D import BBox2D
 
-# from model_evaluator.interfaces.detection3D import BBox3D
+from model_evaluator.interfaces.detection3D import BBox3D
 import numpy as np
 
-# from pytorch3d.ops import box3d_overlap
+from pytorch3d.ops import box3d_overlap
 
 
 def calculate_ious_2d(
@@ -18,12 +18,12 @@ def calculate_ious_2d(
     return ious
 
 
-# def calculate_ious_3d(
-#         pred_bboxes: list[BBox3D], gt_bboxes: list[BBox3D]
-# ) -> np.ndarray:
-#     prediction_corners = [bbox.corners for bbox in pred_bboxes]
-#     ground_truth_corners = [bbox.corners for bbox in gt_bboxes]
-#     return box3d_overlap(ground_truth_corners, prediction_corners)[1]
+def calculate_ious_3d(
+        pred_bboxes: list[BBox3D], gt_bboxes: list[BBox3D]
+) -> np.ndarray:
+    prediction_corners = [bbox.corners for bbox in pred_bboxes]
+    ground_truth_corners = [bbox.corners for bbox in gt_bboxes]
+    return box3d_overlap(ground_truth_corners, prediction_corners)[1]
 
 
 def get_tp_fp(
