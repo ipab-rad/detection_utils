@@ -1,15 +1,17 @@
 from model_evaluator.connectors.lidar_connector import LiDARConnector
-from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path, get_reader_3d
+from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
 
 
 def process_rosbags_3D(connector:LiDARConnector):
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
 
-    rosbags = [x for x in rosbags if x.distance == "10m" and x.vru_type == "ped" and x.take == "0" and x.count == "1"]
+    rosbags = [x for x in rosbags
+               if x.metadata.distance == "10m" and x.metadata.vru_type == "ped"  and
+               x.metadata.take == "0" and x.metadata.count == "1"]
 
     print(rosbags[0])
 
-    rosbag_reader = get_reader_3d(rosbags[0].path)
+    rosbag_reader = rosbags[0].get_reader_3d()
 
     rosbag_data = rosbag_reader.read_data()
 

@@ -18,8 +18,7 @@ from model_evaluator.utils.metrics_calculator import (
 )
 
 from model_evaluator.utils.kb_rosbag_matcher import (
-    match_rosbags_in_path,
-    get_reader_2d
+    match_rosbags_in_path
 )
 
 def inference_2d(
@@ -154,10 +153,10 @@ def camera_run():
     rosbag = rosbags[0]
     print(rosbag)
     print(
-        f'rosbag: {rosbag.path} - expected VRUS: {get_expectations(rosbag.count)}'
+        f'rosbag: {rosbag.path} - expected VRUS: {get_expectations(rosbag.metadata.count)}'
     )
 
-    rosbag_reader = get_reader_2d(rosbag.path)
+    rosbag_reader = rosbag.get_reader_2d()
     rosbag_data = rosbag_reader.read_data()
 
     image, _ = next(rosbag_data)
