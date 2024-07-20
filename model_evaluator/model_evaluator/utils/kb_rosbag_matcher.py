@@ -54,7 +54,7 @@ class KBRosbagMetaData:
         return RosbagDatasetReader2D(self.path, self.IMAGE_TOPIC)
 
     def get_reader_3d(self) -> RosbagDatasetReader3D:
-        return RosbagDatasetReader3D(self.path, self.IMAGE_TOPIC)
+        return RosbagDatasetReader3D(self.path, self.LIDAR_TOPIC)
 
 
 def parse(path: str):
