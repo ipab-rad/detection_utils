@@ -91,10 +91,11 @@ def process_images(
 
 def process_rosbags_3D(connector):
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
-    print(rosbags[0])
+
+    rosbags_current = [x for x in rosbags if x.distance == "10m" and x.vru_type == "ped" and x.take == "0" and x.count == "1"]
 
     rosbag_reader = RosbagDatasetReader3D(
-        rosbags[0].path
+        rosbags_current[0].path
     )
 
     rosbag_data = rosbag_reader.read_data()

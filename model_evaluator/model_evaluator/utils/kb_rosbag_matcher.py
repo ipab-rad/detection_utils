@@ -36,7 +36,7 @@ class KBRosbagMetaData:
 
     def __str__(self):
         line1 = f"{self.date=} {self.time=}"
-        line2 = f"{self.distance=} {self.count=} {self.vru_type}"
+        line2 = f"{self.distance=} {self.count=} {self.vru_type=}"
         line3 = f"{self.take=} {self.bag_no=}"
 
         return f"{line1}\n{line2}\n{line3}"

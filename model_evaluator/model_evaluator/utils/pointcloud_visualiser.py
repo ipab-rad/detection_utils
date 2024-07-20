@@ -130,9 +130,23 @@ class PointCloudVisualizer:
         color = [1, 0.5, 1]             # Pink
         bbox = self.create_bounding_box(center,rot_matrix, dimensions, color)
 
+        yaw = 4
+
+        bbox2 = self.create_bounding_box(
+            [13.25, 2.48, -0.62],
+            np.array([
+                [np.cos(yaw), -np.sin(yaw), 0],
+                [np.sin(yaw), np.cos(yaw), 0],
+                [0, 0, 1]
+            ]),
+            [0.71, 0.67, 1.46],
+            [0.8, 0, 1]
+        )
+
         # Add geometries to visualizer
         vis.add_geometry(o3d_pc)
         vis.add_geometry(bbox)
+        vis.add_geometry(bbox2)
         vis.add_geometry(origin_basis)
 
         # Set the camera view parameters

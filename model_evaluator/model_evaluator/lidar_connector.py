@@ -51,10 +51,16 @@ class LiDARConnector(InferenceConnector3D):
         rclpy.shutdown()
 
     def detected_object_to_detection3D(self, det_object: DetectedObject):
-        bbox = BBox3D.from_footprint(det_object.shape.footprint)
-        score = det_object.existence_probability
+        if det_object.classification[0].label not in [0, 1, 2]:
+            print(det_object.classification)
+            print(det_object.kinematics.pose_with_covariance.pose.position)
+            print(det_object.shape.dimensions)
+            print(det_object.kinematics.pose_with_covariance.pose.orientation)
+            print(det_object.existence_probability)
+        # bbox = BBox3D.from_footprint(det_object.shape.footprint)
+        # score = det_object.existence_probability
 
-        return Detection3D(bbox, score)
+        # return Detection3D(bbox, score)
 
     def run_inference(self, msg: PointCloud2) -> Optional[list[Detection3D]]:
         with self.lock:
@@ -64,6 +70,8 @@ class LiDARConnector(InferenceConnector3D):
                 result = self.node.results_queue.get(timeout=1)
 
                 all_objects: list[DetectedObject] = result.objects
+
+                print([det_object.classification[0].label for det_object in all_objects])
 
                 return [
                     self.detected_object_to_detection3D(det_object)
