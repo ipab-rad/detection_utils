@@ -11,7 +11,7 @@ from model_evaluator.interfaces.labels import Label
 
 class KBRosbagMetaData:
     IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
-    LIDAR_TOPIC = '/sensor/lidar/top'
+    LIDAR_TOPIC = '/sensor/lidar/top/points'
 
     path: str
     timestamp: datetime
