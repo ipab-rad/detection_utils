@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 import os
 import sys
@@ -11,7 +9,6 @@ import rosbag2_py
 from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
 from sensor_msgs.msg import PointCloud2, PointField
-
 
 # Datatypes for PointField
 _DATATYPES = {
@@ -34,7 +31,8 @@ class PointCloudVisualizer:
         """Generate the struct format string for unpacking PointCloud2 data."""
         fmt = '>' if is_bigendian else '<'
         offset = 0
-        for field in (f for f in sorted(fields, key=lambda f: f.offset) if field_names is None or f.name in field_names):
+        for field in (f for f in sorted(fields, key=lambda f: f.offset) if
+                      field_names is None or f.name in field_names):
             if offset < field.offset:
                 fmt += 'x' * (field.offset - offset)
                 offset = field.offset
@@ -100,7 +98,7 @@ class PointCloudVisualizer:
 
     def create_bounding_box(self, center=[0.0, 0.0, 0.0], rotation=np.eye(3),
                             dimensions=[0.5, 0.5, 1.0], color=[0.0, 1.0, 0.0]):
-        
+
         """Create an oriented bounding box at the specified location."""
         bbox = o3d.geometry.OrientedBoundingBox(center=center, R=rotation, extent=dimensions)
         bbox.color = color
@@ -127,8 +125,8 @@ class PointCloudVisualizer:
         rot_matrix = np.eye(3)          # Identity, i.e no rotation
         dimensions = [0.5, 0.7, 1.9]    # x (depth), y (width), z (height)
 
-        color = [1, 0.5, 1]             # Pink
-        bbox = self.create_bounding_box(center,rot_matrix, dimensions, color)
+        color = [1, 0.5, 1]  # Pink
+        bbox = self.create_bounding_box(center, rot_matrix, dimensions, color)
 
         yaw = 4
 
@@ -143,11 +141,16 @@ class PointCloudVisualizer:
             [0.8, 0, 1]
         )
 
+        car_bboxes = self.car_bboxes()
+
         # Add geometries to visualizer
         vis.add_geometry(o3d_pc)
         vis.add_geometry(bbox)
         vis.add_geometry(bbox2)
         vis.add_geometry(origin_basis)
+
+        for c_b in car_bboxes:
+            vis.add_geometry(c_b)
 
         # Set the camera view parameters
         ctr = vis.get_view_control()
@@ -192,6 +195,108 @@ class PointCloudVisualizer:
                     break
                 lidar_frame += 1
         del reader
+
+    def car_bboxes(self):
+        car_bbox_colour = [1, 1, 1]  # white
+
+        yaw1 = 1.554
+        car_bbox_1 = self.create_bounding_box(
+            [12.037, 5.274, -0.521],
+            np.array([
+                [np.cos(yaw1), -np.sin(yaw1), 0],
+                [np.sin(yaw1), np.cos(yaw1), 0],
+                [0, 0, 1]
+            ]),
+            [4.601, 1.995, 1.569],
+            car_bbox_colour
+        )
+
+        yaw2 = 1.611
+        car_bbox_2 = self.create_bounding_box(
+            [18.974, 4.948, -0.704],
+            np.array([
+                [np.cos(yaw2), -np.sin(yaw2), 0],
+                [np.sin(yaw2), np.cos(yaw2), 0],
+                [0, 0, 1]
+            ]),
+            [4.089, 1.845, 1.449],
+            car_bbox_colour
+        )
+
+        yaw3 = 1.598
+        car_bbox_3 = self.create_bounding_box(
+            [9.462, 5.227, -0.674],
+            np.array([
+                [np.cos(yaw3), -np.sin(yaw3), 0],
+                [np.sin(yaw3), np.cos(yaw3), 0],
+                [0, 0, 1]
+            ]),
+            [4.456, 1.903, 1.512],
+            car_bbox_colour
+        )
+
+        yaw4 = 1.459
+        car_bbox_4 = self.create_bounding_box(
+            [28.691, 5.238, -0.363],
+            np.array([
+                [np.cos(yaw4), -np.sin(yaw4), 0],
+                [np.sin(yaw4), np.cos(yaw4), 0],
+                [0, 0, 1]
+            ]),
+            [4.729, 2.032, 1.821],
+            car_bbox_colour
+        )
+
+        yaw5 = 1.653
+        car_bbox_5 = self.create_bounding_box(
+            [6.964, 4.921, -0.709],
+            np.array([
+                [np.cos(yaw5), -np.sin(yaw5), 0],
+                [np.sin(yaw5), np.cos(yaw5), 0],
+                [0, 0, 1]
+            ]),
+            [4.610, 1.931, 1.499],
+            car_bbox_colour
+        )
+
+        yaw6 = 1.515
+        car_bbox_6 = self.create_bounding_box(
+            [23.838, 5.311, -0.505],
+            np.array([
+                [np.cos(yaw6), -np.sin(yaw6), 0],
+                [np.sin(yaw6), np.cos(yaw6), 0],
+                [0, 0, 1]
+            ]),
+            [3.774, 1.839, 1.497],
+            car_bbox_colour
+        )
+
+        yaw7 = 1.515
+        car_bbox_7 = self.create_bounding_box(
+            [14.964, 5.887, -0.231],
+            np.array([
+                [np.cos(yaw7), -np.sin(yaw7), 0],
+                [np.sin(yaw7), np.cos(yaw7), 0],
+                [0, 0, 1]
+            ]),
+            [4.425, 1.924, 1.579],
+            car_bbox_colour
+        )
+
+        # actually classed as a truck
+        yaw8 = 1.614
+        car_bbox_8 = self.create_bounding_box(
+            [35.923, 4.266, -0.354],
+            np.array([
+                [np.cos(yaw8), -np.sin(yaw8), 0],
+                [np.sin(yaw8), np.cos(yaw8), 0],
+                [0, 0, 1]
+            ]),
+            [5.485, 2.401, 2.101],
+            car_bbox_colour
+        )
+
+        return [car_bbox_1, car_bbox_2, car_bbox_3, car_bbox_4, car_bbox_5, car_bbox_6, car_bbox_7, car_bbox_8]
 
 
 if __name__ == "__main__":

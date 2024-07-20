@@ -12,7 +12,6 @@ from tier4_perception_msgs.msg import (
     DetectedObjectsWithFeature,
     DetectedObjectWithFeature,
 )
-from autoware_perception_msgs.msg import ObjectClassification
 
 from model_evaluator.interfaces.inference_connector import InferenceConnector2D
 from model_evaluator.interfaces.detection2D import Detection2D, BBox2D
