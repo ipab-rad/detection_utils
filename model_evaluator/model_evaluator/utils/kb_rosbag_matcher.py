@@ -2,7 +2,7 @@ import re
 import glob
 from datetime import datetime
 
-from model_evaluator.rosbag_reader import (
+from model_evaluator.readers.rosbag_reader import (
     RosbagDatasetReader2D,
     RosbagDatasetReader3D,
 )
