@@ -1,4 +1,5 @@
 from model_evaluator.connectors.lidar_connector import LiDARConnector
+from model_evaluator.interfaces.detection3D import Detection3D
 from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
 
 
@@ -20,6 +21,17 @@ def process_rosbags_3D(connector:LiDARConnector):
             detections = connector.run_inference(point_cloud)
 
             print(detections)
+
+
+def filter_detections_kb(detections: list[Detection3D]):
+    # filter detections to only the experiment area
+    # x greater than 2
+    # y between -8 and 7
+    return [det for det in detections
+            if 2 < det.bbox.center_x
+            and -8 < det.bbox.center_y < 7
+            ]
+
 
 def lidar_run():
     connector = LiDARConnector(

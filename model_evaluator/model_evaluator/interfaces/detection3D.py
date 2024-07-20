@@ -9,8 +9,34 @@ from autoware_perception_msgs.msg import DetectedObject
 class BBox3D:
     # TODO: Add asserts
 
+    center_x: float
+    center_y: float
+    center_z: float
+    length: float
+    width: float
+    height: float
+    heading: float
+
     # corners 1-8
     corners: torch.Tensor
+
+    def __init__(self,
+                 center_x: float,
+                 center_y: float,
+                 center_z: float,
+                 length: float,
+                 width: float,
+                 height: float,
+                 heading: float,
+                 ):
+        self.center_x = center_x
+        self.center_y = center_y
+        self.center_z = center_z
+        self.length = length
+        self.width = width
+        self.height = height
+        self.heading = heading
+
 
     @staticmethod
     def from_oriented(
@@ -22,7 +48,7 @@ class BBox3D:
         height: float,
         heading: float,
     ) -> 'BBox3D':
-        bbox = BBox3D()
+        bbox = BBox3D(center_x,center_y,center_z,length,width,height,heading)
         l, w, h = length, width, height
         yaw = heading
         center = [center_x, center_y, center_z]
