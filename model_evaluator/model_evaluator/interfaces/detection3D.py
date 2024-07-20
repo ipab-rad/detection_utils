@@ -7,8 +7,6 @@ from model_evaluator.interfaces.labels import Label
 from autoware_perception_msgs.msg import DetectedObject
 
 class BBox3D:
-    # TODO: Add asserts
-
     center_x: float
     center_y: float
     center_z: float
@@ -94,6 +92,12 @@ class BBox3D:
 
         bbox = BBox3D.from_oriented(center.x, center.y, center.z, dimensions.x, dimensions.y, dimensions.z, yaw)
         return bbox
+
+    def __str__(self):
+        return f"{self.center_x=} {self.center_y=} {self.center_z=} {self.length=} {self.width=} {self.height=} {self.heading=}"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class Detection3D:

@@ -10,7 +10,7 @@ def process_rosbags_3D(connector:LiDARConnector):
                if x.metadata.distance == "10m" and x.metadata.vru_type == "ped"  and
                x.metadata.take == "0" and x.metadata.count == "1"]
 
-    print(rosbags[0])
+    print(rosbags[0].metadata)
 
     rosbag_reader = rosbags[0].get_reader_3d()
 
@@ -20,7 +20,7 @@ def process_rosbags_3D(connector:LiDARConnector):
         if frame_counter == 230:
             detections = connector.run_inference(point_cloud)
 
-            print(detections)
+            print([x.bbox for x in detections])
 
 
 def filter_detections_kb(detections: list[Detection3D]):
