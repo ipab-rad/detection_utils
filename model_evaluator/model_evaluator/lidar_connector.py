@@ -10,6 +10,7 @@ from autoware_perception_msgs.msg import DetectedObjects,DetectedObject
 
 from model_evaluator.interfaces.inference_connector import InferenceConnector3D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
+from model_evaluator.interfaces.labels import parse_label
 
 
 class LiDARConnectorNode(Node):
@@ -51,16 +52,11 @@ class LiDARConnector(InferenceConnector3D):
         rclpy.shutdown()
 
     def detected_object_to_detection3D(self, det_object: DetectedObject):
-        if det_object.classification[0].label not in [0, 1, 2]:
-            print(det_object.classification)
-            print(det_object.kinematics.pose_with_covariance.pose.position)
-            print(det_object.shape.dimensions)
-            print(det_object.kinematics.pose_with_covariance.pose.orientation)
-            print(det_object.existence_probability)
-        # bbox = BBox3D.from_footprint(det_object.shape.footprint)
-        # score = det_object.existence_probability
+        bbox = BBox3D.from_detected_object(det_object)
+        score = det_object.existence_probability
+        label = det_object.classification[0].label
 
-        # return Detection3D(bbox, score)
+        return Detection3D(bbox, score, parse_label(label))
 
     def run_inference(self, msg: PointCloud2) -> Optional[list[Detection3D]]:
         with self.lock:
@@ -70,8 +66,6 @@ class LiDARConnector(InferenceConnector3D):
                 result = self.node.results_queue.get(timeout=1)
 
                 all_objects: list[DetectedObject] = result.objects
-
-                print([det_object.classification[0].label for det_object in all_objects])
 
                 return [
                     self.detected_object_to_detection3D(det_object)

@@ -205,7 +205,7 @@ def camera_run():
 
         print(f'{fppi=:.2f} {mean_ap=:.2f} {mr=}')
 
-def process_rosbags_3D(connector):
+def process_rosbags_3D(connector:LiDARConnector):
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
 
     rosbags = [x for x in rosbags if x.distance == "10m" and x.vru_type == "ped" and x.take == "0" and x.count == "1"]
