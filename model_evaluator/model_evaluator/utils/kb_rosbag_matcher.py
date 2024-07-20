@@ -1,87 +1,92 @@
 import re
 import glob
+from datetime import datetime
 
 from model_evaluator.interfaces.detection2D import Label2D
+from model_evaluator.rosbag_reader import (
+    RosbagDatasetReader2D,
+    RosbagDatasetReader3D,
+)
 
 
 class KBRosbagMetaData:
+    IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
+    LIDAR_TOPIC = '/sensor/lidar/top'
+
     path: str
-    date: str
-    time: str
+    timestamp: datetime
     distance: str
     count: str
     vru_type: str
     take: str
-    bag_no: str
 
     def __init__(
         self,
         path: str,
-        date: str,
-        time: str,
+        timestamp: datetime,
         distance: str,
         count: str,
         vru_type: str,
         take: str,
-        bag_no: str,
     ):
         self.path = path
-        self.date = date
-        self.time = time
+        self.timestamp = timestamp
         self.distance = distance
         self.count = count
         self.vru_type = vru_type
         self.take = take
-        self.bag_no = bag_no
 
     def __str__(self):
-        line1 = f"{self.date=} {self.time=}"
-        line2 = f"{self.distance=} {self.count=} {self.vru_type}"
-        line3 = f"{self.take=} {self.bag_no=}"
+        line1 = f"{self.timestamp.isoformat()}"
+        line2 = f"{self.distance=} {self.count=} {self.vru_type=}"
+        line3 = f"{self.take=}"
 
         return f"{line1}\n{line2}\n{line3}"
 
     def __repr__(self):
         return self.__str__()
 
-    def expectations(self):
+    def get_expectations_2d(self) -> dict[Label2D, int]:
+        # TODO: Add support for cycling rosbags
         return {Label2D.PEDESTRIAN: int(self.count)}
+
+    def get_reader_2d(self) -> RosbagDatasetReader2D:
+        return RosbagDatasetReader2D(self.path, self.IMAGE_TOPIC)
+
+    def get_reader_3d(self) -> RosbagDatasetReader3D:
+        return RosbagDatasetReader3D(self.path, self.IMAGE_TOPIC)
 
 
 def parse(path: str):
     pattern = re.compile(
-        r'.*/(?P<date>\d{4}_\d{2}_\d{2})-(?P<time>\d{2}_\d{2}_\d{2})_(?P<name>.+).mcap'
+        r'.*/(?P<time>\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})_(?P<name>.+)'
     )
     name_pattern = re.compile(
-        r'(?P<distance>\d+m)_(?P<count>\d)_(?P<type>(\w|_)+)_(?P<take>\d)_(?P<bag_no>\d)'
+        r'(?P<distance>\d+m)_(?P<count>\d)_(?P<type>(\w|_)+)_(?P<take>\d)'
     )
 
     match = pattern.match(path)
 
     if not match:
-        return
+        return None
 
-    date = match.group('date')
-    time = match.group('time')
+    timestamp = datetime.strptime(match.group('time'), '%Y_%m_%d-%H_%M_%S')
 
     name_match = name_pattern.match(match.group('name'))
 
     if not name_match:
-        return
+        return None
 
     distance = name_match.group('distance')
     count = name_match.group('count')
     vru_type = name_match.group('type')
     take = name_match.group('take')
-    bag_no = name_match.group('bag_no')
 
-    return KBRosbagMetaData(
-        path, date, time, distance, count, vru_type, take, bag_no
-    )
+    return KBRosbagMetaData(path, timestamp, distance, count, vru_type, take)
 
 
 def match_rosbags_in_path(path: str) -> list[KBRosbagMetaData]:
-    paths = glob.glob(f'{path}/**', recursive=True)
+    paths = glob.glob(f'{path}/*/')
 
     all_metadata = [parse(path) for path in paths]
 
