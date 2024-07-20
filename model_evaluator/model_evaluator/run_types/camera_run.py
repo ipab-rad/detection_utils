@@ -1,6 +1,5 @@
 import cv2
 
-from model_evaluator.readers.rosbag_reader import DatasetReaderInitialiser
 from model_evaluator.readers.waymo_reader import (
     WaymoDatasetReader2D,
     parse_context_names_and_timestamps,
@@ -20,6 +19,7 @@ from model_evaluator.utils.metrics_calculator import (
 
 from model_evaluator.utils.kb_rosbag_matcher import (
     match_rosbags_in_path,
+    KBDatasetReaderInitialiser
 )
 
 def inference_2d(
@@ -157,7 +157,7 @@ def camera_run():
         f'rosbag: {rosbag.path} - expected VRUS: {get_expectations(rosbag.count)}'
     )
 
-    rosbag_reader = DatasetReaderInitialiser().get_reader_2d(rosbag.path)
+    rosbag_reader = KBDatasetReaderInitialiser().get_reader_2d(rosbag.path)
     rosbag_data = rosbag_reader.read_data()
 
     image, _ = next(rosbag_data)

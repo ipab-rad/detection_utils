@@ -1,6 +1,5 @@
 from model_evaluator.connectors.lidar_connector import LiDARConnector
-from model_evaluator.readers.rosbag_reader import DatasetReaderInitialiser
-from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
+from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path, KBDatasetReaderInitialiser
 
 
 def process_rosbags_3D(connector:LiDARConnector):
@@ -10,7 +9,7 @@ def process_rosbags_3D(connector:LiDARConnector):
 
     print(rosbags[0])
 
-    rosbag_reader = DatasetReaderInitialiser().get_reader_3d(rosbags[0].path)
+    rosbag_reader = KBDatasetReaderInitialiser().get_reader_3d(rosbags[0].path)
 
     rosbag_data = rosbag_reader.read_data()
 
