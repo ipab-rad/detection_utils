@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generator
+from typing import Generator, Optional
 
 import numpy as np
 
@@ -13,7 +13,7 @@ class DatasetReader2D(ABC):
     @abstractmethod
     def read_data(
         self,
-    ) -> Generator[tuple[np.ndarray, list[Detection2D]], None, None]:
+    ) -> Generator[tuple[np.ndarray, Optional[list[Detection2D]]], None, None]:
         raise NotImplementedError
 
 
@@ -21,5 +21,7 @@ class DatasetReader3D(ABC):
     @abstractmethod
     def read_data(
         self,
-    ) -> Generator[tuple[PointCloud2, list[Detection3D]], None, None]:
+    ) -> Generator[
+        tuple[PointCloud2, Optional[list[Detection3D]]], None, None
+    ]:
         raise NotImplementedError
