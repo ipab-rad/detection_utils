@@ -1,5 +1,4 @@
-from enum import IntFlag, auto
-
+from model_evaluator.interfaces.labels import Label
 
 class BBox2D:
     # TODO: Add asserts
@@ -58,27 +57,12 @@ class BBox2D:
 
         return intersect_area / (self.area() + other.area() - intersect_area)
 
-
-class Label2D(IntFlag):
-    UNKNOWN = auto()
-    CAR = auto()
-    TRUCK = auto()
-    BUS = auto()
-    BICYCLE = auto()
-    MOTORCYCLE = auto()
-    PEDESTRIAN = auto()
-
-    VEHICLE = CAR | TRUCK | BUS | MOTORCYCLE
-    VRU = BICYCLE | PEDESTRIAN
-    ALL = UNKNOWN | CAR | TRUCK | BUS | BICYCLE | MOTORCYCLE | PEDESTRIAN
-
-
 class Detection2D:
     bbox: BBox2D
     score: float
-    label: Label2D
+    label: Label
 
-    def __init__(self, bbox: BBox2D, score: float, label: Label2D):
+    def __init__(self, bbox: BBox2D, score: float, label: Label):
         self.bbox = bbox
         self.score = score
         self.label = label

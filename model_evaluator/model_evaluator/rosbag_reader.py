@@ -12,8 +12,9 @@ from model_evaluator.interfaces.dataset_reader import (
     DatasetReader2D,
     DatasetReader3D,
 )
-from model_evaluator.interfaces.detection2D import Detection2D, BBox2D, Label2D
+from model_evaluator.interfaces.detection2D import Detection2D, BBox2D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
+from model_evaluator.interfaces.labels import Label
 
 
 class RosbagReader():
@@ -73,7 +74,7 @@ class RosbagReader():
 
 class RosbagDatasetReader2D(DatasetReader2D):
 
-    def __init__(self, path: str, image_topic: str, expectations: dict[Label2D, int]):
+    def __init__(self, path: str, image_topic: str, expectations: dict[Label, int]):
         self.path = path
         self.image_topic = image_topic
         self.expectations = expectations

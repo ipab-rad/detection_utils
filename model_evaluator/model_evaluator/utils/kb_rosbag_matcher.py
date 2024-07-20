@@ -1,7 +1,7 @@
 import re
 import glob
 
-from model_evaluator.interfaces.detection2D import Label2D
+from model_evaluator.interfaces.labels import Label
 
 
 class KBRosbagMetaData:
@@ -45,7 +45,7 @@ class KBRosbagMetaData:
         return self.__str__()
 
     def expectations(self):
-        return {Label2D.PEDESTRIAN: int(self.count)}
+        return {Label.PEDESTRIAN: int(self.count)}
 
 
 def parse(path: str):

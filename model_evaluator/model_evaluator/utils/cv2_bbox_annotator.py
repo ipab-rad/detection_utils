@@ -1,12 +1,12 @@
 import cv2
-from model_evaluator.interfaces.detection2D import BBox2D, Label2D
+from model_evaluator.interfaces.detection2D import BBox2D, Label
 
 
 def to_cv_pts(bbox: BBox2D):
     return (round(bbox.x1), round(bbox.y1)), (round(bbox.x2), round(bbox.y2))
 
 
-def draw_bboxes(image, gts, detections, included_labels=Label2D.ALL):
+def draw_bboxes(image, gts, detections, included_labels=Label.ALL):
     for gt in gts:
         if gt.label not in included_labels:
             continue

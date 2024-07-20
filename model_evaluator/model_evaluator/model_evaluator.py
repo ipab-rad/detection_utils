@@ -10,7 +10,7 @@ from model_evaluator.rosbag_reader import RosbagDatasetReader2D, RosbagDatasetRe
 from model_evaluator.waymo_reader import (
     WaymoDatasetReader2D,
 )
-from model_evaluator.interfaces.detection2D import Label2D
+from model_evaluator.interfaces.labels import Label
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
 from model_evaluator.lidar_connector import LiDARConnector
 from model_evaluator.utils.cv2_bbox_annotator import (
@@ -37,7 +37,7 @@ def process_images(
     mean_avg_precisions = []
 
     if iou_thresholds is None:
-        iou_thresholds = {Label2D.PEDESTRIAN: 0.5}
+        iou_thresholds = {Label.PEDESTRIAN: 0.5}
 
     for frame_counter, (image, gts) in enumerate(data):
         detections = connector.run_inference(image)
@@ -71,7 +71,7 @@ def process_images(
         mean_avg_precisions.append(mean_avg_precision)
 
         if gif_path is not None and frame_counter % 5 == 0:
-            draw_bboxes(image, gts, detections, Label2D.VRU | Label2D.UNKNOWN)
+            draw_bboxes(image, gts, detections, Label.VRU | Label.UNKNOWN)
             images.append(image)
 
     if gif_path is not None:
@@ -99,9 +99,9 @@ def process_rosbags_3D(connector):
 
     rosbag_data = rosbag_reader.read_data()
 
-    point_cloud, bboxes = next(rosbag_data)
-
-    detections = connector.run_inference(point_cloud)
+    for frame_counter, (point_cloud, bboxes) in enumerate(rosbag_data):
+        if frame_counter == 230:
+            detections = connector.run_inference(point_cloud)
 
 def camera_run():
     connector = TensorrtYOLOXConnector(
@@ -115,7 +115,7 @@ def camera_run():
     )
 
     print(
-        f'rosbag: {rosbag_reader.path} - expected VRUS: {rosbag_reader.expectations[Label2D.PEDESTRIAN]}'
+        f'rosbag: {rosbag_reader.path} - expected VRUS: {rosbag_reader.expectations[Label.PEDESTRIAN]}'
     )
     rosbag_data = rosbag_reader.read_data()
 
@@ -123,7 +123,7 @@ def camera_run():
         rosbag_data,
         connector,
         'rosbag.gif',
-        {Label2D.PEDESTRIAN: 0.0},
+        {Label.PEDESTRIAN: 0.0},
         get_unmatched_tp_fp,
     )
 
