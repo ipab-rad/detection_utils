@@ -1,107 +1,142 @@
-from itertools import islice
-
-import numpy as np
 import cv2
-import imageio
-
-
-from model_evaluator.rosbag_reader import RosbagDatasetReader2D, RosbagDatasetReader3D
 
 from model_evaluator.waymo_reader import (
     WaymoDatasetReader2D,
+    parse_context_names_and_timestamps,
 )
-from model_evaluator.interfaces.detection2D import Label2D
+from model_evaluator.interfaces.detection2D import Label2D, Detection2D
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
 from model_evaluator.lidar_connector import LiDARConnector
 from model_evaluator.utils.cv2_bbox_annotator import (
     draw_bboxes,
 )
 from model_evaluator.utils.metrics_calculator import (
-    get_tp_fp,
-    get_unmatched_tp_fp,
-    calculate_ap,
-    calculate_ious_2d,
+    calculate_ious_per_label,
+    calculate_tps_fps_per_label,
+    calculate_mean_ap,
+    calculate_fppi,
+    calculate_mr,
 )
 
-from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
+from model_evaluator.utils.kb_rosbag_matcher import (
+    match_rosbags_in_path,
+)
 
 
-def process_images(
-    data,
+def inference_2d(
+    data_generator,
     connector,
-    gif_path=None,
-    iou_thresholds=None,
-    tp_fp_function=get_tp_fp,
+    video_file: str = None,
+    video_size=(960, 640),
+    video_fps=10,
+    video_annotations=[Label2D.VRU],
 ):
-    images = []
-    mean_avg_precisions = []
+    if video_file is not None:
+        if not video_file.endswith('.avi'):
+            video_file += '.avi'
 
-    if iou_thresholds is None:
-        iou_thresholds = {Label2D.PEDESTRIAN: 0.5}
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+        video_writer = cv2.VideoWriter(
+            video_file, fourcc, video_fps, video_size
+        )
 
-    for frame_counter, (image, gts) in enumerate(data):
+    detections_gts = []
+
+    for frame_counter, (image, gts) in enumerate(data_generator):
         detections = connector.run_inference(image)
 
         if detections is None:
-            print('Inference failed')
+            # TODO: Handle accordingly
+            print(f'Inference failed for frame {frame_counter}')
             continue
 
-        avg_precisions = []
+        detections_gts.append((detections, gts))
 
-        for label in iou_thresholds:
-            label_gts = [gt for gt in gts if gt.label in label]
-            label_detections = [
-                detection
-                for detection in detections
-                if detection.label in label
-            ]
-
-            label_detections.sort(key=lambda x: x.score, reverse=True)
-
-            ious = calculate_ious_2d(
-                [detection.bbox for detection in label_detections],
-                [gt.bbox for gt in label_gts],
-            )
-
-            tps, fps = tp_fp_function(ious, iou_thresholds[label])
-
-            avg_precisions.append(calculate_ap(tps, fps, len(label_gts)))
-
-        mean_avg_precision = np.mean(avg_precisions)
-        mean_avg_precisions.append(mean_avg_precision)
-
-        if gif_path is not None and frame_counter % 5 == 0:
-            draw_bboxes(image, gts, detections, Label2D.VRU | Label2D.UNKNOWN)
-            images.append(image)
-
-    if gif_path is not None:
-        imageio.v3.imwrite(
-            gif_path,
-            [
-                cv2.cvtColor(
-                    cv2.resize(image, None, fx=0.5, fy=0.5), cv2.COLOR_BGR2RGB
-                )
-                for image in images
-            ],
-            fps=2,
-            loop=0,
+        ious_per_label = calculate_ious_per_label(
+            detections, gts, video_annotations
         )
 
-    return mean_avg_precisions
+        threshold = 0.7
 
-def process_rosbags_3D(connector):
-    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
-    print(rosbags[0])
+        tps_fps_per_label = calculate_tps_fps_per_label(
+            ious_per_label, threshold
+        )
 
-    rosbag_reader = RosbagDatasetReader3D(
-        rosbags[0].path
-    )
+        num_gts = len(gts)
 
-    rosbag_data = rosbag_reader.read_data()
+        mean_ap = calculate_mean_ap(tps_fps_per_label, num_gts)
+        fppi = calculate_fppi(tps_fps_per_label)
+        mr = calculate_mr(tps_fps_per_label, num_gts)
 
-    point_cloud, bboxes = next(rosbag_data)
+        if video_writer:
+            text_height = 25
+            offset = 10
+            thickness = 2
 
-    detections = connector.run_inference(point_cloud)
+            scale = cv2.getFontScaleFromHeight(
+                cv2.FONT_HERSHEY_SIMPLEX, text_height, thickness
+            )
+
+            cv2.putText(
+                image,
+                f'mAP@{threshold:.2f}: {mean_ap:.2f}  FPPI: {fppi:.2f}  MR: {mr}',
+                (0, text_height),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                scale,
+                (0, 0, 0),
+                thickness,
+            )
+
+            for i, label in enumerate(video_annotations):
+                label_gts = [gt for gt in gts if gt.label in label]
+                num_label_gts = len(label_gts)
+                label_tps, label_fps = tps_fps_per_label[label]
+
+                draw_bboxes(image, label_gts, label_tps, label_fps)
+
+                cv2.putText(
+                    image,
+                    f'{label.name}',
+                    (0, (i + 2) * (text_height + offset)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    scale,
+                    (0, 0, 0),
+                    thickness,
+                )
+                cv2.putText(
+                    image,
+                    f'{num_label_gts:2}',
+                    (250, (i + 2) * (text_height + offset)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    scale,
+                    (0, 0, 0),
+                    thickness,
+                )
+                cv2.putText(
+                    image,
+                    f'TP: {label_tps.sum():2}',
+                    (350, (i + 2) * (text_height + offset)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    scale,
+                    (0, 0, 0),
+                    thickness,
+                )
+                cv2.putText(
+                    image,
+                    f'FP: {label_fps.sum():2}',
+                    (500, (i + 2) * (text_height + offset)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    scale,
+                    (0, 0, 0),
+                    thickness,
+                )
+
+            image = cv2.resize(image, video_size)
+            video_writer.write(image)
+
+    video_writer.release()
+
+    return detections_gts
 
 def camera_run():
     connector = TensorrtYOLOXConnector(
@@ -109,42 +144,80 @@ def camera_run():
         '/perception/object_recognition/detection/rois0',
     )
 
-    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
-    rosbag_reader = RosbagDatasetReader2D(
-        rosbags[0].path, rosbags[0].expectations()
+    rosbags = match_rosbags_in_path(
+        '/opt/ros_ws/rosbags/kings_buildings_data/'
     )
 
+    rosbag = rosbags[0]
+    print(rosbag)
     print(
-        f'rosbag: {rosbag_reader.path} - expected VRUS: {rosbag_reader.expectations[Label2D.PEDESTRIAN]}'
+        f'rosbag: {rosbag.path} - expected VRUS: {rosbag.get_expectations_2d()}'
     )
+
+    rosbag_reader = rosbag.get_reader_2d()
     rosbag_data = rosbag_reader.read_data()
 
-    rosbag_maps = process_images(
-        rosbag_data,
-        connector,
-        'rosbag.gif',
-        {Label2D.PEDESTRIAN: 0.0},
-        get_unmatched_tp_fp,
+    image, _ = next(rosbag_data)
+
+    detections = connector.run_inference(image)
+
+    print(detections)
+
+    waymo_contexts_dict = parse_context_names_and_timestamps(
+        '/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/2d_pvps_validation_frames.txt'
     )
-
-    rosbag_raw_mAP = np.mean(rosbag_maps)
-
-    cut_off = len(rosbag_maps) // 3
-    rosbag_mAP = np.mean(rosbag_maps[cut_off:-cut_off])
-
-    print(f'{rosbag_raw_mAP=}, {rosbag_mAP=}')
+    context_name = list(waymo_contexts_dict.keys())[0]
 
     waymo_reader = WaymoDatasetReader2D(
         '/opt/ros_ws/rosbags/waymo/validation',
-        '/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/2d_pvps_validation_frames.txt',
+        context_name,
+        waymo_contexts_dict[context_name],
         [1],
     )
 
-    waymo_data = islice(waymo_reader.read_data(), 50)
-    waymo_maps = process_images(waymo_data, connector, 'waymo.gif')
-    waymo_mAP = np.mean(waymo_maps)
+    waymo_data = waymo_reader.read_data()
 
-    print(f'{waymo_mAP=}')
+    waymo_labels = [
+        Label2D.UNKNOWN,
+        Label2D.PEDESTRIAN,
+        Label2D.BICYCLE,
+        Label2D.VEHICLE,
+    ]
+
+    waymo_detections_gts = inference_2d(
+        waymo_data,
+        connector,
+        context_name,
+        video_size=(1920, 1280),
+        video_annotations=waymo_labels,
+    )
+
+    for detections, gts in waymo_detections_gts:
+        ious_per_label = calculate_ious_per_label(detections, gts)
+
+        tps_fps_per_label = calculate_tps_fps_per_label(ious_per_label, 0.7)
+
+        num_gts = len(gts)
+
+        fppi = calculate_fppi(tps_fps_per_label, num_gts)
+        mean_ap = calculate_mean_ap(tps_fps_per_label, num_gts)
+        mr = calculate_mr(tps_fps_per_label, num_gts)
+
+        print(f'{fppi=:.2f} {mean_ap=:.2f} {mr=}')
+
+def process_rosbags_3D(connector):
+    rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
+    print(rosbags[0])
+
+    rosbag_reader = rosbags[0].get_reader_3d()
+
+    rosbag_data = rosbag_reader.read_data()
+
+    point_cloud, _ = next(rosbag_data)
+
+    detections = connector.run_inference(point_cloud)
+
+    print(detections)
 
 def lidar_run():
     connector = LiDARConnector(
@@ -155,8 +228,10 @@ def lidar_run():
 
     process_rosbags_3D(connector)
 
+
 def main():
     # camera_run()
 
-    lidar_run()
+    # lidar_run()
 
+    return
