@@ -142,3 +142,15 @@ class RosbagDatasetReader3D(DatasetReader3D):
             bounding_boxes = None
 
             yield pointcloud_msg, bounding_boxes
+
+
+class DatasetReaderInitialiser:
+    def __init__(self):
+        self.IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
+        self.LIDAR_TOPIC = '/sensor/lidar/top/points'
+
+    def get_reader_2d(self, path: str) -> RosbagDatasetReader2D:
+        return RosbagDatasetReader2D(path, self.IMAGE_TOPIC)
+
+    def get_reader_3d(self, path: str) -> RosbagDatasetReader3D:
+        return RosbagDatasetReader3D(path, self.LIDAR_TOPIC)

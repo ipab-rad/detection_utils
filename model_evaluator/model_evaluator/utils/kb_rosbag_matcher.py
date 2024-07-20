@@ -2,12 +2,6 @@ import re
 import glob
 from datetime import datetime
 
-from model_evaluator.readers.rosbag_reader import (
-    RosbagDatasetReader2D,
-    RosbagDatasetReader3D,
-)
-from model_evaluator.interfaces.labels import Label
-
 
 class KBRosbagMetaData:
     IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
@@ -45,16 +39,6 @@ class KBRosbagMetaData:
 
     def __repr__(self):
         return self.__str__()
-
-    def get_expectations_2d(self) -> dict[Label, int]:
-        # TODO: Add support for cycling rosbags
-        return {Label.PEDESTRIAN: int(self.count)}
-
-    def get_reader_2d(self) -> RosbagDatasetReader2D:
-        return RosbagDatasetReader2D(self.path, self.IMAGE_TOPIC)
-
-    def get_reader_3d(self) -> RosbagDatasetReader3D:
-        return RosbagDatasetReader3D(self.path, self.LIDAR_TOPIC)
 
 
 def parse(path: str):

@@ -1,5 +1,6 @@
 import cv2
 
+from model_evaluator.readers.rosbag_reader import DatasetReaderInitialiser
 from model_evaluator.readers.waymo_reader import (
     WaymoDatasetReader2D,
     parse_context_names_and_timestamps,
@@ -136,6 +137,10 @@ def inference_2d(
 
     return detections_gts
 
+def get_expectations(count: str) -> dict[Label, int]:
+    # TODO: Add support for cycling rosbags
+    return {Label.PEDESTRIAN: int(count)}
+
 def camera_run():
     connector = TensorrtYOLOXConnector(
         '/sensor/camera/fsp_l/image_rect_color',
@@ -149,10 +154,10 @@ def camera_run():
     rosbag = rosbags[0]
     print(rosbag)
     print(
-        f'rosbag: {rosbag.path} - expected VRUS: {rosbag.get_expectations_2d()}'
+        f'rosbag: {rosbag.path} - expected VRUS: {get_expectations(rosbag.count)}'
     )
 
-    rosbag_reader = rosbag.get_reader_2d()
+    rosbag_reader = DatasetReaderInitialiser().get_reader_2d(rosbag.path)
     rosbag_data = rosbag_reader.read_data()
 
     image, _ = next(rosbag_data)
