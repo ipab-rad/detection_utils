@@ -14,6 +14,7 @@ from model_evaluator.interfaces.dataset_reader import (
 )
 from model_evaluator.interfaces.detection2D import Detection2D
 from model_evaluator.interfaces.detection3D import Detection3D
+from model_evaluator.interfaces.labels import Label
 
 
 class RosbagReader:

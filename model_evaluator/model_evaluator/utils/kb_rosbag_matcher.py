@@ -2,11 +2,11 @@ import re
 import glob
 from datetime import datetime
 
-from model_evaluator.interfaces.detection2D import Label2D
 from model_evaluator.rosbag_reader import (
     RosbagDatasetReader2D,
     RosbagDatasetReader3D,
 )
+from model_evaluator.interfaces.labels import Label
 
 
 class KBRosbagMetaData:
@@ -46,9 +46,9 @@ class KBRosbagMetaData:
     def __repr__(self):
         return self.__str__()
 
-    def get_expectations_2d(self) -> dict[Label2D, int]:
+    def get_expectations_2d(self) -> dict[Label, int]:
         # TODO: Add support for cycling rosbags
-        return {Label2D.PEDESTRIAN: int(self.count)}
+        return {Label.PEDESTRIAN: int(self.count)}
 
     def get_reader_2d(self) -> RosbagDatasetReader2D:
         return RosbagDatasetReader2D(self.path, self.IMAGE_TOPIC)

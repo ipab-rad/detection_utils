@@ -1,9 +1,10 @@
-from model_evaluator.interfaces.detection2D import Detection2D, BBox2D, Label2D
+from model_evaluator.interfaces.detection2D import Detection2D, BBox2D
+from model_evaluator.interfaces.labels import Label
 
-# from model_evaluator.interfaces.detection3D import BBox3D
+from model_evaluator.interfaces.detection3D import BBox3D
 import numpy as np
 
-# from pytorch3d.ops import box3d_overlap
+from pytorch3d.ops import box3d_overlap
 
 
 def calculate_ious_2d(
@@ -18,12 +19,12 @@ def calculate_ious_2d(
     return ious
 
 
-# def calculate_ious_3d(
-#         pred_bboxes: list[BBox3D], gt_bboxes: list[BBox3D]
-# ) -> np.ndarray:
-#     prediction_corners = [bbox.corners for bbox in pred_bboxes]
-#     ground_truth_corners = [bbox.corners for bbox in gt_bboxes]
-#     return box3d_overlap(ground_truth_corners, prediction_corners)[1]
+def calculate_ious_3d(
+        pred_bboxes: list[BBox3D], gt_bboxes: list[BBox3D]
+) -> np.ndarray:
+    prediction_corners = [bbox.corners for bbox in pred_bboxes]
+    ground_truth_corners = [bbox.corners for bbox in gt_bboxes]
+    return box3d_overlap(ground_truth_corners, prediction_corners)[1]
 
 
 def get_tp_fp(
@@ -87,8 +88,8 @@ def get_unmatched_tp_fp(
 
 
 def calculate_ious_per_label(
-    detections: list[Detection2D], gts: list[Detection2D], labels: set[Label2D]
-) -> dict[Label2D, np.ndarray]:
+    detections: list[Detection2D], gts: list[Detection2D], labels: set[Label]
+) -> dict[Label, np.ndarray]:
     ious_dict = {}
 
     for label in labels:
@@ -136,8 +137,8 @@ def calculate_tps_fps(
 
 
 def calculate_tps_fps_per_label(
-    ious_per_label: dict[Label2D, np.ndarray], threshold: float
-) -> dict[Label2D, tuple[np.ndarray, np.ndarray]]:
+    ious_per_label: dict[Label, np.ndarray], threshold: float
+) -> dict[Label, tuple[np.ndarray, np.ndarray]]:
     tps_fps_per_label = {}
 
     for label in ious_per_label:
@@ -149,7 +150,7 @@ def calculate_tps_fps_per_label(
 
 
 def calculate_fppi(
-    tps_fps_per_label: dict[Label2D, tuple[np.ndarray, np.ndarray]]
+    tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]]
 ) -> int:
     fps = 0
 
@@ -186,7 +187,7 @@ def calculate_ap(tps: np.ndarray, fps: np.ndarray, num_gts: int) -> float:
 
 
 def calculate_mean_ap(
-    tps_fps_per_label: dict[Label2D, tuple[np.ndarray, np.ndarray]],
+    tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]],
     num_gts: int,
 ) -> float:
     aps = []
@@ -200,7 +201,7 @@ def calculate_mean_ap(
 
 
 def calculate_mr(
-    tps_fps_per_label: dict[Label2D, tuple[np.ndarray, np.ndarray]],
+    tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]],
     num_gts: int,
 ) -> int:
     tps = 0
@@ -214,7 +215,7 @@ def calculate_mr(
 
 
 def compare_expectations(
-    detections: list[Detection2D], expectations: dict[Label2D, int]
+    detections: list[Detection2D], expectations: dict[Label, int]
 ):
     for label in expectations:
         label_detections = [

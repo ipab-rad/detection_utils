@@ -10,8 +10,9 @@ from model_evaluator.interfaces.dataset_reader import (
     DatasetReader2D,
     DatasetReader3D,
 )
-from model_evaluator.interfaces.detection2D import Detection2D, Label2D, BBox2D
+from model_evaluator.interfaces.detection2D import Detection2D, BBox2D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
+from model_evaluator.interfaces.labels import Label
 
 
 def parse_context_names_and_timestamps(
@@ -69,16 +70,16 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
         )
 
     @staticmethod
-    def decode_waymo_label_2D(label: int) -> Label2D:
+    def decode_waymo_label_2D(label: int) -> Label:
         match label:
             case label_pb2.Label.TYPE_VEHICLE:
-                return Label2D.VEHICLE
+                return Label.VEHICLE
             case label_pb2.Label.TYPE_PEDESTRIAN:
-                return Label2D.PEDESTRIAN
+                return Label.PEDESTRIAN
             case label_pb2.Label.TYPE_CYCLIST:
-                return Label2D.BICYCLE
+                return Label.BICYCLE
             case _:
-                return Label2D.UNKNOWN
+                return Label.UNKNOWN
 
     @staticmethod
     def decode_waymo_camera_detections(

@@ -4,7 +4,7 @@ from model_evaluator.waymo_reader import (
     WaymoDatasetReader2D,
     parse_context_names_and_timestamps,
 )
-from model_evaluator.interfaces.detection2D import Label2D, Detection2D
+from model_evaluator.interfaces.labels import Label
 from model_evaluator.yolox_connector import TensorrtYOLOXConnector
 from model_evaluator.lidar_connector import LiDARConnector
 from model_evaluator.utils.cv2_bbox_annotator import (
@@ -29,7 +29,7 @@ def inference_2d(
     video_file: str = None,
     video_size=(960, 640),
     video_fps=10,
-    video_annotations=[Label2D.VRU],
+    video_annotations=[Label.VRU],
 ):
     if video_file is not None:
         if not video_file.endswith('.avi'):
@@ -178,10 +178,10 @@ def camera_run():
     waymo_data = waymo_reader.read_data()
 
     waymo_labels = [
-        Label2D.UNKNOWN,
-        Label2D.PEDESTRIAN,
-        Label2D.BICYCLE,
-        Label2D.VEHICLE,
+        Label.UNKNOWN,
+        Label.PEDESTRIAN,
+        Label.BICYCLE,
+        Label.VEHICLE,
     ]
 
     waymo_detections_gts = inference_2d(
@@ -207,17 +207,20 @@ def camera_run():
 
 def process_rosbags_3D(connector):
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
+
+    rosbags = [x for x in rosbags if x.distance == "10m" and x.vru_type == "ped" and x.take == "0" and x.count == "1"]
+
     print(rosbags[0])
 
     rosbag_reader = rosbags[0].get_reader_3d()
 
     rosbag_data = rosbag_reader.read_data()
 
-    point_cloud, _ = next(rosbag_data)
+    for frame_counter, (point_cloud, _) in enumerate(rosbag_data):
+        if frame_counter == 230:
+            detections = connector.run_inference(point_cloud)
 
-    detections = connector.run_inference(point_cloud)
-
-    print(detections)
+            print(detections)
 
 def lidar_run():
     connector = LiDARConnector(

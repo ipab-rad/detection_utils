@@ -60,8 +60,10 @@ class PointCloudVisualizer:
             for v in range(height):
                 offset = row_step * v
                 for u in range(width):
+                    # to keep the colouring consistent between frames
                     p = unpack_from(data, offset)[:3]
-                    if not any(isnan(pv) for pv in p):
+                    p_within_bounds = 100 > p[0] > -40
+                    if not any(isnan(pv) for pv in p) and p_within_bounds:
                         yield p
                     offset += point_step
         else:
@@ -104,7 +106,7 @@ class PointCloudVisualizer:
         bbox.color = color
         return bbox
 
-    def visualize_pointcloud(self, pc_np_array, point_size=1):
+    def visualize_pointcloud(self, pc_np_array, point_size=1.8):
         """Visualize a point cloud with Open3D."""
         vis = o3d.visualization.Visualizer()
         vis.create_window()
@@ -121,25 +123,41 @@ class PointCloudVisualizer:
         origin_basis = self.create_basis([0.0, 0.0, 0.0])
 
         # Define the location where you want to place the box and create it
-        center = [11.5, 3.0, -1.0]
-        rot_matrix = np.eye(3)          # Identitty, i.e no rotation
-        dimensions = [0.5, 0.5, 1.8]    # W, D, H
+        center = [13.175, 0.375, -0.65]
+        rot_matrix = np.eye(3)          # Identity, i.e no rotation
+        dimensions = [0.5, 0.7, 1.9]    # x (depth), y (width), z (height)
+
         color = [1, 0.5, 1]             # Pink
         bbox = self.create_bounding_box(center,rot_matrix, dimensions, color)
+
+        yaw = 4
+
+        bbox2 = self.create_bounding_box(
+            [13.25, 2.48, -0.62],
+            np.array([
+                [np.cos(yaw), -np.sin(yaw), 0],
+                [np.sin(yaw), np.cos(yaw), 0],
+                [0, 0, 1]
+            ]),
+            [0.71, 0.67, 1.46],
+            [0.8, 0, 1]
+        )
 
         # Add geometries to visualizer
         vis.add_geometry(o3d_pc)
         vis.add_geometry(bbox)
+        vis.add_geometry(bbox2)
         vis.add_geometry(origin_basis)
 
         # Set the camera view parameters
         ctr = vis.get_view_control()
         ctr.set_lookat([4.3, -0.6, -0.84])  # Look at the origin
-        ctr.set_front([-0.83, 0.02, 0.55])  # Camera front direction
-        ctr.set_up([0.55, 0.0, 0.84])       # Camera up direction
-        ctr.set_zoom(0.02)                  # Zoom level
+        ctr.set_front([-0.88, 0, 0.48])  # Camera front direction
+        ctr.set_up([0.73, 0.0, 0.68])  # Camera up direction
+        ctr.set_zoom(0.03)  # Zoom level
 
         vis.run()
+        vis.capture_screen_image("imgs/temp.png")
         vis.destroy_window()
 
     def read_rosbag(self, input_bag: str, selected_lidar_frame=0):
