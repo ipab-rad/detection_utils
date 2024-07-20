@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 from model_evaluator.waymo_reader import (
     WaymoDatasetReader2D,
@@ -9,15 +10,15 @@ from model_evaluator.yolox_connector import TensorrtYOLOXConnector
 from model_evaluator.lidar_connector import LiDARConnector
 from model_evaluator.utils.cv2_bbox_annotator import (
     draw_bboxes,
+    create_video_writer,
+    draw_metrics,
 )
 from model_evaluator.utils.metrics_calculator import (
-    calculate_ious_per_label,
-    calculate_tps_fps_per_label,
-    calculate_mean_ap,
-    calculate_fppi,
+    calculate_ap,
+    calculate_ious,
+    calculate_tps_fps,
     calculate_mr,
 )
-
 from model_evaluator.utils.kb_rosbag_matcher import (
     match_rosbags_in_path,
 )
@@ -26,19 +27,14 @@ from model_evaluator.utils.kb_rosbag_matcher import (
 def inference_2d(
     data_generator,
     connector,
+    thresholds=[0.5],
     video_file: str = None,
     video_size=(960, 640),
     video_fps=10,
     video_annotations=[Label.VRU],
 ):
     if video_file is not None:
-        if not video_file.endswith('.avi'):
-            video_file += '.avi'
-
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        video_writer = cv2.VideoWriter(
-            video_file, fourcc, video_fps, video_size
-        )
+        video_writer = create_video_writer(video_file, video_size, video_fps)
 
     detections_gts = []
 
@@ -52,84 +48,47 @@ def inference_2d(
 
         detections_gts.append((detections, gts))
 
-        ious_per_label = calculate_ious_per_label(
-            detections, gts, video_annotations
-        )
+        aps_per_label = np.empty((len(video_annotations), len(thresholds)))
+        tps_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
+        fps_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
+        mrs_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
 
-        threshold = 0.7
+        num_gts_per_label = np.empty(len(video_annotations), dtype=np.uint)
 
-        tps_fps_per_label = calculate_tps_fps_per_label(
-            ious_per_label, threshold
-        )
+        for i, label in enumerate(video_annotations):
+            label_gts = [gt for gt in gts if gt.label in label]
+            label_detections = [
+                detection for detection in detections if detection.label in label
+            ]
+            num_label_gts = len(label_gts)
 
-        num_gts = len(gts)
+            num_gts_per_label[i] = num_label_gts
 
-        mean_ap = calculate_mean_ap(tps_fps_per_label, num_gts)
-        fppi = calculate_fppi(tps_fps_per_label)
-        mr = calculate_mr(tps_fps_per_label, num_gts)
+            ious = calculate_ious(label_detections, label_gts)
+
+            for j, threshold in enumerate(thresholds):
+                tps, fps = calculate_tps_fps(ious, threshold)
+
+                ap = calculate_ap(tps, fps, num_label_gts)
+                mr = calculate_mr(tps, num_label_gts)
+
+                aps_per_label[i, j] = ap
+                tps_per_label[i, j] = tps.sum()
+                fps_per_label[i, j] = fps.sum()
+                mrs_per_label[i, j] = mr
+                
+                tps_detections = [detection for i, detection in enumerate(label_detections) if tps[i] == 1]
+                fps_detections = [detection for i, detection in enumerate(label_detections) if fps[i] == 1]
+
+                draw_bboxes(image, label_gts, tps_detections, fps_detections)
+
+        mean_aps = np.nanmean(aps_per_label, axis=0)
 
         if video_writer:
-            text_height = 25
-            offset = 10
-            thickness = 2
+            threshold = thresholds[0]
+            mean_ap = mean_aps[0]
 
-            scale = cv2.getFontScaleFromHeight(
-                cv2.FONT_HERSHEY_SIMPLEX, text_height, thickness
-            )
-
-            cv2.putText(
-                image,
-                f'mAP@{threshold:.2f}: {mean_ap:.2f}  FPPI: {fppi:.2f}  MR: {mr}',
-                (0, text_height),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                scale,
-                (0, 0, 0),
-                thickness,
-            )
-
-            for i, label in enumerate(video_annotations):
-                label_gts = [gt for gt in gts if gt.label in label]
-                num_label_gts = len(label_gts)
-                label_tps, label_fps = tps_fps_per_label[label]
-
-                draw_bboxes(image, label_gts, label_tps, label_fps)
-
-                cv2.putText(
-                    image,
-                    f'{label.name}',
-                    (0, (i + 2) * (text_height + offset)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    scale,
-                    (0, 0, 0),
-                    thickness,
-                )
-                cv2.putText(
-                    image,
-                    f'{num_label_gts:2}',
-                    (250, (i + 2) * (text_height + offset)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    scale,
-                    (0, 0, 0),
-                    thickness,
-                )
-                cv2.putText(
-                    image,
-                    f'TP: {label_tps.sum():2}',
-                    (350, (i + 2) * (text_height + offset)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    scale,
-                    (0, 0, 0),
-                    thickness,
-                )
-                cv2.putText(
-                    image,
-                    f'FP: {label_fps.sum():2}',
-                    (500, (i + 2) * (text_height + offset)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    scale,
-                    (0, 0, 0),
-                    thickness,
-                )
+            draw_metrics(image, threshold, mean_ap, video_annotations, num_gts_per_label, tps_per_label[:, 0], fps_per_label[:, 0], mrs_per_label[:, 0], aps_per_label[:, 0])
 
             image = cv2.resize(image, video_size)
             video_writer.write(image)
@@ -184,26 +143,14 @@ def camera_run():
         Label.VEHICLE,
     ]
 
-    waymo_detections_gts = inference_2d(
+    inference_2d(
         waymo_data,
         connector,
+        [0.5],
         context_name,
         video_size=(1920, 1280),
         video_annotations=waymo_labels,
     )
-
-    for detections, gts in waymo_detections_gts:
-        ious_per_label = calculate_ious_per_label(detections, gts)
-
-        tps_fps_per_label = calculate_tps_fps_per_label(ious_per_label, 0.7)
-
-        num_gts = len(gts)
-
-        fppi = calculate_fppi(tps_fps_per_label, num_gts)
-        mean_ap = calculate_mean_ap(tps_fps_per_label, num_gts)
-        mr = calculate_mr(tps_fps_per_label, num_gts)
-
-        print(f'{fppi=:.2f} {mean_ap=:.2f} {mr=}')
 
 def process_rosbags_3D(connector):
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')

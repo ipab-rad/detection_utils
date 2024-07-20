@@ -86,6 +86,18 @@ def get_unmatched_tp_fp(
 
     return tp, fp
 
+def calculate_ious(
+    detections: list[Detection2D], gts: list[Detection2D]
+) -> np.ndarray:
+    detections = detections.copy()
+    detections.sort(key=lambda x: x.score, reverse=True)
+
+    ious = calculate_ious_2d(
+        [detection.bbox for detection in detections],
+        [gt.bbox for gt in gts],
+    )
+
+    return ious
 
 def calculate_ious_per_label(
     detections: list[Detection2D], gts: list[Detection2D], labels: set[Label]
@@ -148,8 +160,10 @@ def calculate_tps_fps_per_label(
 
     return tps_fps_per_label
 
+def calculate_fppi(fps: np.ndarray) -> int:
+    return sum(fps)
 
-def calculate_fppi(
+def calculate_fppi_per_label(
     tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]]
 ) -> int:
     fps = 0
@@ -163,15 +177,15 @@ def calculate_fppi(
 
 
 def calculate_ap(tps: np.ndarray, fps: np.ndarray, num_gts: int) -> float:
+    if num_gts == 0:
+        return np.nan
+    
     tps_cumsum = np.cumsum(tps)
     fps_cumsum = np.cumsum(fps)
 
     precisions = tps_cumsum / (tps_cumsum + fps_cumsum)
 
-    if num_gts > 0:
-        recalls = tps_cumsum / num_gts
-    else:
-        recalls = np.zeros_like(tps)
+    recalls = tps_cumsum / num_gts
 
     precisions = np.concatenate(([0], precisions, [0]))
     recalls = np.concatenate(([0], recalls, [1]))
@@ -199,8 +213,10 @@ def calculate_mean_ap(
 
     return np.mean(aps)
 
+def calculate_mr(tps: np.ndarray, num_gts: int) -> int:
+    return num_gts - tps.sum()
 
-def calculate_mr(
+def calculate_mr_per_label(
     tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]],
     num_gts: int,
 ) -> int:
