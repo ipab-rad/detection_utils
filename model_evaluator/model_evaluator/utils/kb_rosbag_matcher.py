@@ -6,9 +6,6 @@ from model_evaluator.readers.rosbag_reader import RosbagDatasetReader2D, RosbagD
 
 
 class KBRosbagMetaData:
-    IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
-    LIDAR_TOPIC = '/sensor/lidar/top/points'
-
     path: str
     timestamp: datetime
     distance: str
@@ -42,16 +39,15 @@ class KBRosbagMetaData:
     def __repr__(self):
         return self.__str__()
 
-class KBDatasetReaderInitialiser:
-    def __init__(self):
-        self.IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
-        self.LIDAR_TOPIC = '/sensor/lidar/top/points'
+class KBRosbagTopics:
+    IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
+    LIDAR_TOPIC = '/sensor/lidar/top/points'
 
-    def get_reader_2d(self, path: str) -> RosbagDatasetReader2D:
-        return RosbagDatasetReader2D(path, self.IMAGE_TOPIC)
+def get_reader_2d(path: str) -> RosbagDatasetReader2D:
+    return RosbagDatasetReader2D(path, KBRosbagTopics.IMAGE_TOPIC)
 
-    def get_reader_3d(self, path: str) -> RosbagDatasetReader3D:
-        return RosbagDatasetReader3D(path, self.LIDAR_TOPIC)
+def get_reader_3d(path: str) -> RosbagDatasetReader3D:
+    return RosbagDatasetReader3D(path, KBRosbagTopics.LIDAR_TOPIC)
 
 
 def parse(path: str):
