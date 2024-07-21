@@ -21,12 +21,13 @@ def analyse():
 
         if gt_count == 0 or pred_count == 0:
             print(f"Cannot calculate AP for label {label.name} {gt_count=} {pred_count=}")
+            continue
 
         predictions.sort(key=lambda x: x["score"])
 
         tp = np.array([int(x["true_positive"]) for x in predictions])
         fp = np.ones(tp.shape) - tp
-        
+
         ap = calculate_ap(tp,fp,gt_count)
 
         print(f"AP={ap} for label {label.name}")

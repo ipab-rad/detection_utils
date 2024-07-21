@@ -87,6 +87,7 @@ def get_unmatched_tp_fp_from_ious(
 
     return tp, fp
 
+
 def calculate_ious_from_dets_gts(
         detections: list[Detection2D], gts: list[Detection2D]
 ) -> np.ndarray:
@@ -118,6 +119,7 @@ def calculate_ious_per_label_from_dets_gts(
 
     return ious_dict
 
+
 def calculate_tps_fps_per_label(
         ious_per_label: dict[Label, np.ndarray], threshold: float
 ) -> dict[Label, tuple[np.ndarray, np.ndarray]]:
@@ -147,10 +149,8 @@ def calculate_fppi_per_label(
 
     return fps
 
-def calculate_precisions_recalls(tps:np.ndarray, fps:np.ndarray, num_gts:int) -> tuple[np.ndarray, np.ndarray]:
-    if num_gts == 0:
-        return np.nan
 
+def calculate_precisions_recalls(tps: np.ndarray, fps: np.ndarray, num_gts: int) -> tuple[np.ndarray, np.ndarray]:
     tps_cumsum = np.cumsum(tps)
     fps_cumsum = np.cumsum(fps)
 
@@ -160,20 +160,25 @@ def calculate_precisions_recalls(tps:np.ndarray, fps:np.ndarray, num_gts:int) ->
 
     return precisions, recalls
 
+
 def interpolate_precisions(precisions_raw):
     precisions = precisions_raw.copy()
     for i in range(len(precisions) - 2, -1, -1):
         # set the current precision to the next one along, if it's higher
-        precisions[i] = max(precisions[i], precisions[i+1])
+        precisions[i] = max(precisions[i], precisions[i + 1])
 
     return precisions
 
+
 def calculate_ap(tps: np.ndarray, fps: np.ndarray, num_gts: int) -> float:
-    precisions, recalls = calculate_precisions_recalls(tps,fps,num_gts)
+    if num_gts == 0:
+        return np.nan
+
+    precisions, recalls = calculate_precisions_recalls(tps, fps, num_gts)
 
     precisions = interpolate_precisions(precisions)
 
-    precisions = np.concatenate((precisions[0], precisions, [0]))
+    precisions = np.concatenate(([precisions[0]], precisions, [0]))
     recalls = np.concatenate(([0], recalls, [1]))
 
     # identify recall threshold indices
