@@ -109,3 +109,19 @@ class Detection3D:
         self.bbox = bbox
         self.score = score
         self.label = label
+
+
+class DetectionResult3D:
+    score:float
+    true_positive:bool
+    classification_int: int
+    frame: int
+
+    def __init__(self, score:float, true_positive:bool, classification:Label, frame:int):
+        self.score = score
+        self.true_positive =  true_positive
+        self.classification_int = classification.value
+        self.frame = frame
+
+    def to_json(self):
+        return self.__dict__
