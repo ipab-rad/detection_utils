@@ -16,6 +16,7 @@ from model_evaluator.interfaces.dataset_reader import (
 from model_evaluator.interfaces.detection2D import Detection2D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
 from model_evaluator.interfaces.labels import Label
+from model_evaluator.utils.json_file_reader import read_json
 
 
 class RosbagReader:
@@ -145,8 +146,7 @@ class RosbagDatasetReader3D(DatasetReader3D):
         ped_bboxes_file_dir = f"{bboxes_parent_dir}/scene_boxes"
         ped_bboxes_file_name = bbox_file_name
 
-        with open(f"{ped_bboxes_file_dir}/{ped_bboxes_file_name}.json") as f:
-            ped_bboxes_centers_json = json.load(f)
+        ped_bboxes_centers_json = read_json(f"{ped_bboxes_file_dir}/{ped_bboxes_file_name}.json")
 
         start_frame:int = ped_bboxes_centers_json[0]["frame"] - 10  # 1 sec before first bbox
         end_frame:int = ped_bboxes_centers_json[-1]["frame"] + 10  # 1 sec after last bbox
@@ -173,8 +173,7 @@ class RosbagDatasetReader3D(DatasetReader3D):
         static_vehicle_bboxes_file_dir = bboxes_parent_dir
         static_vehicle_bboxes_file_name = "static_vehicle_boxes"
 
-        with open(f"{static_vehicle_bboxes_file_dir}/{static_vehicle_bboxes_file_name}.json") as f:
-            static_vehicle_bboxes_json = json.load(f)
+        static_vehicle_bboxes_json = read_json(f"{static_vehicle_bboxes_file_dir}/{static_vehicle_bboxes_file_name}.json")
 
         static_vehicle_bboxes_with_classes = [(BBox3D.from_oriented(
             svbj["center"][0], svbj["center"][1], svbj["center"][2],

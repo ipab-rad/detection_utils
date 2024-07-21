@@ -1,20 +1,18 @@
-import json
 from model_evaluator.bbox_generator.keyframe_interpolator import KeyframeInterpolator
+from model_evaluator.utils.json_file_reader import read_json, write_json
 
 
 def create_bboxes_from_keyframes_file(file_path:str):
-    with open(f"keyframes/{file_path}") as f:
-        d = json.load(f)
+    bboxes = read_json(f"keyframes/{file_path}.json")
 
     all_boxes = []
-    for ped_path in d:
+    for ped_path in bboxes:
         ki = KeyframeInterpolator(ped_path)
         all_boxes += ki.all_frames
 
     all_boxes.sort(key=lambda x: x["frame"])
 
-    with open(f"scene_boxes/{file_path}", 'w', encoding='utf-8') as f:
-        json.dump(all_boxes, f, ensure_ascii=False, indent=2)
+    write_json(f"scene_boxes/{file_path}.json", all_boxes)
 
 
 if __name__ == "__main__":

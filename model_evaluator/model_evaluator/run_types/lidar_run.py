@@ -1,6 +1,7 @@
 from model_evaluator.connectors.lidar_connector import LiDARConnector
 from model_evaluator.interfaces.detection3D import Detection3D
 from model_evaluator.interfaces.labels import Label, ALL_LABELS
+from model_evaluator.utils.json_file_reader import write_json
 from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
 from model_evaluator.utils.metrics_calculator import calculate_ious_3d
 
@@ -53,8 +54,7 @@ def process_rosbags_3D(connector:LiDARConnector):
 
     results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb"
 
-    with open(f"{results_dir}/{rosbag_to_run.bbox_file_name}.json", 'w', encoding='utf-8') as f:
-        json.dump(all_results, f, ensure_ascii=False, indent=2)
+    write_json(f"{results_dir}/{rosbag_to_run.bbox_file_name}.json", all_results)
 
 
 def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3D], iou_thresholds: dict[Label, float], frame:int)\
