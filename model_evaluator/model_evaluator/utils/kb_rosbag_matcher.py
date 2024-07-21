@@ -27,7 +27,7 @@ class KBRosbagMetaData:
         self.take = take
 
     def __str__(self):
-        line1 = f"{self.timestamp.isoformat()}"
+        line1 = f"self.timestamp={self.timestamp.isoformat()}"
         line2 = f"{self.distance=} {self.count=} {self.vru_type=}"
         line3 = f"{self.take=}"
 
@@ -48,8 +48,8 @@ class KBRosbag:
 
     def empty(self):
         return self.metadata is None
-    
-    def get_expectations(self) -> dict[Label, int]:
+
+    def get_expectations_2D(self) -> dict[Label, int]:
         # TODO: Add support for cycling rosbags
         return {Label.PEDESTRIAN: self.metadata.count}
 
@@ -57,7 +57,7 @@ class KBRosbag:
         return RosbagDatasetReader2D(self.path, self.IMAGE_TOPIC)
 
     def get_reader_3d(self) -> RosbagDatasetReader3D:
-        return RosbagDatasetReader3D(self.path, self.LIDAR_TOPIC)
+        return RosbagDatasetReader3D(self.path, self.LIDAR_TOPIC, self.metadata)
 
     def parse_metadata(self):
         pattern = re.compile(

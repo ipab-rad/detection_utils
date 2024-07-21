@@ -15,7 +15,6 @@ class Label(Flag):
     ALL = UNKNOWN | CAR | TRUCK | BUS | BICYCLE | MOTORCYCLE | PEDESTRIAN
 
 def parse_label(label: int) -> Label:
-
     match label:
         case ObjectClassification.UNKNOWN:
             return Label.UNKNOWN

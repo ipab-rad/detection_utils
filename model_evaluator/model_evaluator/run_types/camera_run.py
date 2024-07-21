@@ -109,7 +109,7 @@ def camera_run():
     rosbag = rosbags[0]
     print(rosbag)
     print(
-        f'rosbag: {rosbag.path} - expected VRUS: {rosbag.get_expectations()}'
+        f'rosbag: {rosbag.path} - expected VRUS: {rosbag.get_expectations_2D()}'
     )
 
     rosbag_reader = rosbag.get_reader_2d()
