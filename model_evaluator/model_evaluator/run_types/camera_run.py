@@ -14,7 +14,7 @@ from model_evaluator.utils.cv2_bbox_annotator import (
 )
 from model_evaluator.utils.metrics_calculator import (
     calculate_ap,
-    calculate_ious,
+    calculate_ious_from_dets_gts,
     calculate_tps_fps,
     calculate_mr,
 )
@@ -63,7 +63,7 @@ def inference_2d(
 
             num_gts_per_label[i] = num_label_gts
 
-            ious = calculate_ious(label_detections, label_gts)
+            ious = calculate_ious_from_dets_gts(label_detections, label_gts)
 
             for j, threshold in enumerate(thresholds):
                 tps, fps = calculate_tps_fps(ious, threshold)

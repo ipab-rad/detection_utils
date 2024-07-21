@@ -2,4 +2,4 @@ __pycache__/
 *.orig
 
 .vscode/
-model_evaluator/results
+model_evaluator/model_evaluator/results
