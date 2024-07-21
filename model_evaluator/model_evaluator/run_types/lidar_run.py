@@ -1,10 +1,11 @@
 from model_evaluator.connectors.lidar_connector import LiDARConnector
-from model_evaluator.interfaces.detection3D import Detection3D, DetectionResult3D
-from model_evaluator.interfaces.labels import Label
+from model_evaluator.interfaces.detection3D import Detection3D
+from model_evaluator.interfaces.labels import Label, ALL_LABELS
 from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
 from model_evaluator.utils.metrics_calculator import calculate_ious_3d
 
 from scipy.optimize import linear_sum_assignment
+import json
 
 
 def process_rosbags_3D(connector:LiDARConnector):
@@ -26,7 +27,7 @@ def process_rosbags_3D(connector:LiDARConnector):
     start_frame = rosbag_reader.start_frame
     end_frame = rosbag_reader.end_frame
 
-    all_results = {label.name: {"gt_count":0, "results":[]} for label in Label}
+    all_results = {label.name: {"gt_count":0, "results":[]} for label in ALL_LABELS}
 
     for frame_counter, (point_cloud, gt_dets) in enumerate(rosbag_data):
         if frame_counter < start_frame or frame_counter > end_frame:
@@ -49,7 +50,7 @@ def process_rosbags_3D(connector:LiDARConnector):
                 overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
                 overall_dict_entry["results"] += result_dict_entry["results"]
 
-            print(all_results)
+            print(json.dumps(all_results))
 
 
 def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3D], iou_thresholds: dict[Label, float], frame:int)\
@@ -58,14 +59,41 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
     # for everything else, only log false positives
     detection_results_per_class = {}
 
-    for label in iou_thresholds:
-        threshold = iou_thresholds[label]
-        label_pred_bboxes = [x.bbox for x in predictions if x.label == label]
-        label_gt_bboxes = [x.bbox for x in gts if x.label == label]
+    for label in ALL_LABELS:
+        label_preds = [x for x in predictions if x.label == label]
+        label_gts = [x for x in gts if x.label == label]
 
-        ious = calculate_ious_3d(label_pred_bboxes, label_gt_bboxes)
+        no_preds = len(label_preds) == 0
+        no_gts = len(label_gts) == 0
 
-        matched_prediction_idcs, _ = match_bounding_boxes(ious, threshold)
+        if no_preds and no_gts:
+            # frame does not interact at all with current label
+            continue
+
+        if no_preds:
+            # no predictions for class but there are gts
+            detection_results_per_class[label] = {
+                "gt_count":len(label_gts),
+                "results":[]
+            }
+            continue
+
+        matched_prediction_idcs:list[int]
+
+        if no_gts:
+            # predictions but no gts
+            # all the predictions are false positives
+            # matched_prediction_idcs should be empty
+            # this correctly results in all false positives in list comprehension below
+            matched_prediction_idcs = []
+        else:
+            threshold = iou_thresholds[label]
+
+            label_pred_bboxes = [x.bbox for x in label_preds]
+            label_gt_bboxes = [x.bbox for x in label_gts]
+            ious = calculate_ious_3d(label_pred_bboxes, label_gt_bboxes)
+
+            matched_prediction_idcs, _ = match_bounding_boxes(ious, threshold)
 
         detection_results = [
             {
@@ -73,13 +101,14 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
                 "true_positive": p_idx in matched_prediction_idcs,
                 "frame": frame
             }
-            for p_idx, p in enumerate(predictions)
+            for p_idx, p in enumerate(label_preds)
         ]
 
         detection_results_per_class[label] = {
-            "gt_count":len(label_gt_bboxes),
+            "gt_count":len(label_gts),
             "results":detection_results
         }
+
     return detection_results_per_class
 
 

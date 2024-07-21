@@ -14,6 +14,8 @@ class Label(Flag):
     VRU = BICYCLE | PEDESTRIAN
     ALL = UNKNOWN | CAR | TRUCK | BUS | BICYCLE | MOTORCYCLE | PEDESTRIAN
 
+ALL_LABELS = [Label.UNKNOWN, Label.CAR, Label.TRUCK, Label.BUS, Label.BICYCLE, Label.MOTORCYCLE, Label.PEDESTRIAN]
+
 def parse_label(label: int) -> Label:
     match label:
         case ObjectClassification.UNKNOWN:

@@ -202,7 +202,7 @@ class RosbagDatasetReader3D(DatasetReader3D):
     ) -> Generator[
         tuple[PointCloud2, Optional[list[Detection3D]]], None, None
     ]:
-        for frame_counter, _, msg, _ in enumerate(self.reader):
+        for frame_counter, (_, msg, _) in enumerate(self.reader):
             # already in appropriate format
             pointcloud_msg = deserialize_message(msg, PointCloud2)
 
