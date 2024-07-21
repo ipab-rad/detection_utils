@@ -10,17 +10,18 @@ import json
 
 def process_rosbags_3D(connector:LiDARConnector):
     # anything without an IoU threshold does not have any ground truths
-    iou_thresholds = {Label.PEDESTRIAN: 0.5, Label.CAR: 0.7, Label.TRUCK:0.7}
+    # 0.4 used for pedestrian due to GT annotation strategy
+    iou_thresholds = {Label.PEDESTRIAN: 0.4, Label.CAR: 0.5, Label.TRUCK:0.5}
 
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
 
-    rosbags = [x for x in rosbags
+    rosbag_to_run = next(x for x in rosbags
                if x.metadata.distance == "10m" and x.metadata.vru_type == "ped"  and
-               x.metadata.take == 0 and x.metadata.count == 1]
+               x.metadata.take == 0 and x.metadata.count == 1)
 
-    print(rosbags[0].metadata)
+    print(rosbag_to_run.metadata)
 
-    rosbag_reader = rosbags[0].get_reader_3d()
+    rosbag_reader = rosbag_to_run.get_reader_3d()
 
     rosbag_data = rosbag_reader.read_data()
 
@@ -33,7 +34,7 @@ def process_rosbags_3D(connector:LiDARConnector):
         if frame_counter < start_frame or frame_counter > end_frame:
             continue
 
-        if frame_counter == 230:
+        if frame_counter == 210 or frame_counter == 220 or frame_counter == 230:
             detections = connector.run_inference(point_cloud)
 
             detections_in_experiment_area = filter_detections_kb(detections)
@@ -50,7 +51,10 @@ def process_rosbags_3D(connector:LiDARConnector):
                 overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
                 overall_dict_entry["results"] += result_dict_entry["results"]
 
-            print(json.dumps(all_results))
+    results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb"
+
+    with open(f"{results_dir}/{rosbag_to_run.bbox_file_name}.json", 'w', encoding='utf-8') as f:
+        json.dump(all_results, f, ensure_ascii=False, indent=2)
 
 
 def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3D], iou_thresholds: dict[Label, float], frame:int)\
