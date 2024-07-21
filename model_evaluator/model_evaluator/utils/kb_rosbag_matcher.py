@@ -57,7 +57,8 @@ class KBRosbag:
         return RosbagDatasetReader2D(self.path, self.IMAGE_TOPIC)
 
     def get_reader_3d(self) -> RosbagDatasetReader3D:
-        return RosbagDatasetReader3D(self.path, self.LIDAR_TOPIC, self.metadata)
+        bbox_file_name = f"{self.metadata.distance}_{self.metadata.count}_{self.metadata.vru_type}_{self.metadata.take}"
+        return RosbagDatasetReader3D(self.path, self.LIDAR_TOPIC, bbox_file_name)
 
     def parse_metadata(self):
         pattern = re.compile(

@@ -16,7 +16,6 @@ from model_evaluator.interfaces.dataset_reader import (
 from model_evaluator.interfaces.detection2D import Detection2D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
 from model_evaluator.interfaces.labels import Label
-from model_evaluator.utils.kb_rosbag_matcher import KBRosbagMetaData
 
 
 class RosbagReader:
@@ -133,18 +132,18 @@ class RosbagDatasetReader3D(DatasetReader3D):
     gt_ped_bbox_dims = [0.5, 0.7, 1.9]  # fixed size for ease
     gt_ped_bbox_heading = 0  # axis aligned for ease
 
-    def __init__(self, path: str, pointcloud_topic: str, bag_metadata:KBRosbagMetaData):
+    def __init__(self, path: str, pointcloud_topic: str, bbox_file_name:str):
         self.path = path
         self.pointcloud_topic = pointcloud_topic
 
         self.reader = RosbagReader(path, {pointcloud_topic: PointCloud2})
-        self.gt_detections_by_frame, self.start_frame, self.end_frame = self.read_bboxes_from_files(bag_metadata)
+        self.gt_detections_by_frame, self.start_frame, self.end_frame = self.read_bboxes_from_files(bbox_file_name)
 
-    def read_bboxes_from_files(self, metadata:KBRosbagMetaData) -> tuple[dict[int,list[Detection3D]], int, int]:
+    def read_bboxes_from_files(self, bbox_file_name:str) -> tuple[dict[int,list[Detection3D]], int, int]:
         bboxes_parent_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/bbox_generator"
 
         ped_bboxes_file_dir = f"{bboxes_parent_dir}/scene_boxes"
-        ped_bboxes_file_name = f"{metadata.distance}_{metadata.count}_{metadata.vru_type}_{metadata.take}"
+        ped_bboxes_file_name = bbox_file_name
 
         with open(f"{ped_bboxes_file_dir}/{ped_bboxes_file_name}.json") as f:
             ped_bboxes_centers_json = json.load(f)
