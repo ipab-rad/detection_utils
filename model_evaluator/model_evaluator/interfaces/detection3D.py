@@ -6,6 +6,7 @@ from model_evaluator.interfaces.labels import Label
 
 from autoware_perception_msgs.msg import DetectedObject
 
+
 class BBox3D:
     center_x: float
     center_y: float
@@ -35,18 +36,17 @@ class BBox3D:
         self.height = height
         self.heading = heading
 
-
     @staticmethod
     def from_oriented(
-        center_x: float,
-        center_y: float,
-        center_z: float,
-        length: float,
-        width: float,
-        height: float,
-        heading: float,
+            center_x: float,
+            center_y: float,
+            center_z: float,
+            length: float,
+            width: float,
+            height: float,
+            heading: float,
     ) -> 'BBox3D':
-        bbox = BBox3D(center_x,center_y,center_z,length,width,height,heading)
+        bbox = BBox3D(center_x, center_y, center_z, length, width, height, heading)
         l, w, h = length, width, height
         yaw = heading
         center = [center_x, center_y, center_z]
@@ -81,7 +81,7 @@ class BBox3D:
         return bbox
 
     @staticmethod
-    def from_detected_object(det_object:DetectedObject):
+    def from_detected_object(det_object: DetectedObject):
         center = det_object.kinematics.pose_with_covariance.pose.position
         dimensions = det_object.shape.dimensions
 
@@ -99,13 +99,21 @@ class BBox3D:
     def __repr__(self):
         return self.__str__()
 
+    def abbrv_str(self):
+        center_str = f"[{round(self.center_x, 2)},{round(self.center_y, 2)},{round(self.center_z, 2)}]"
+        dims_str = f"[{round(self.length, 2)},{round(self.width, 2)},{round(self.height, 2)}]"
+        heading_str = f"{round(self.heading, 2)}"
+
+        output = f"{center_str},{dims_str},{heading_str}"
+        return output
+
 
 class Detection3D:
     bbox: BBox3D
     score: float
-    label:Label
+    label: Label
 
-    def __init__(self, bbox: BBox3D, score: float, label:Label):
+    def __init__(self, bbox: BBox3D, score: float, label: Label):
         self.bbox = bbox
         self.score = score
         self.label = label

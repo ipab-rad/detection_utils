@@ -104,7 +104,50 @@ class PointCloudVisualizer:
         bbox.color = color
         return bbox
 
-    def visualize_pointcloud(self, pc_np_array, point_size=1.8):
+    def get_bold_bbox(self, center=[0.0, 0.0, 0.0], rotation=np.eye(3),
+                      dimensions=[0.5, 0.5, 1.0], color=[0.0, 1.0, 0.0]):
+        offset = np.array([0.01, 0.01, 0.01])
+
+        center_np = np.array(center)
+
+        main = self.create_bounding_box(
+            center_np,
+            rotation,
+            dimensions,
+            color
+        )
+
+        plus_one = self.create_bounding_box(
+            center_np + offset,
+            rotation,
+            dimensions,
+            color
+        )
+
+        plus_two = self.create_bounding_box(
+            center_np + 2 * offset,
+            rotation,
+            dimensions,
+            color
+        )
+
+        minus_one = self.create_bounding_box(
+            center_np - offset,
+            rotation,
+            dimensions,
+            color
+        )
+
+        minus_two = self.create_bounding_box(
+            center_np - 2 * offset,
+            rotation,
+            dimensions,
+            color
+        )
+
+        return [main, plus_one, plus_two, minus_one, minus_two]
+
+    def visualize_pointcloud(self, pc_np_array, lidar_frame, point_size=1.8):
         """Visualize a point cloud with Open3D."""
         vis = o3d.visualization.Visualizer()
         vis.create_window()
@@ -128,29 +171,32 @@ class PointCloudVisualizer:
         color = [1, 0.5, 1]  # Pink
         bbox = self.create_bounding_box(center, rot_matrix, dimensions, color)
 
-        yaw = 4
+        center2 = [13.21, -1.07, -0.63]
+        dims2 = [0.84, 0.69, 1.43]
+        yaw2 = 1.57
+        color2 = [1, 0.5, 1]  # Pink
 
-        bbox2 = self.create_bounding_box(
-            [13.25, 2.48, -0.62],
+        bbox2_bold = self.get_bold_bbox(
+            center2,
             np.array([
-                [np.cos(yaw), -np.sin(yaw), 0],
-                [np.sin(yaw), np.cos(yaw), 0],
+                [np.cos(yaw2), -np.sin(yaw2), 0],
+                [np.sin(yaw2), np.cos(yaw2), 0],
                 [0, 0, 1]
             ]),
-            [0.71, 0.67, 1.46],
-            [0.8, 0, 1]
+            dims2,
+            color2
         )
 
-        car_bboxes = self.car_bboxes()
+        # car_bboxes = self.car_bboxes()
+
+        all_bboxes = [] + bbox2_bold
 
         # Add geometries to visualizer
         vis.add_geometry(o3d_pc)
-        vis.add_geometry(bbox)
-        vis.add_geometry(bbox2)
         vis.add_geometry(origin_basis)
 
-        for c_b in car_bboxes:
-            vis.add_geometry(c_b)
+        for bb in all_bboxes:
+            vis.add_geometry(bb)
 
         # Set the camera view parameters
         ctr = vis.get_view_control()
@@ -160,7 +206,7 @@ class PointCloudVisualizer:
         ctr.set_zoom(0.03)  # Zoom level
 
         vis.run()
-        vis.capture_screen_image("imgs/temp.png")
+        vis.capture_screen_image(f"imgs/{lidar_frame}.png")
         vis.destroy_window()
 
     def read_rosbag(self, input_bag: str, selected_lidar_frame=0):
@@ -191,7 +237,7 @@ class PointCloudVisualizer:
                     msg_type = get_message(typename(topic))
                     msg = deserialize_message(data, msg_type)
                     pcd_as_numpy_array = np.array(list(self.read_points(msg)))
-                    self.visualize_pointcloud(pcd_as_numpy_array)
+                    self.visualize_pointcloud(pcd_as_numpy_array, selected_lidar_frame)
                     break
                 lidar_frame += 1
         del reader

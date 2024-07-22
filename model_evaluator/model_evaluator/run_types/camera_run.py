@@ -15,7 +15,7 @@ from model_evaluator.utils.cv2_bbox_annotator import (
 from model_evaluator.utils.metrics_calculator import (
     calculate_ap,
     calculate_ious_from_dets_gts,
-    calculate_tps_fps,
+    get_unmatched_tp_fp_from_ious,
     calculate_mr,
 )
 from model_evaluator.utils.kb_rosbag_matcher import (
@@ -66,7 +66,7 @@ def inference_2d(
             ious = calculate_ious_from_dets_gts(label_detections, label_gts)
 
             for j, threshold in enumerate(thresholds):
-                tps, fps = calculate_tps_fps(ious, threshold)
+                tps, fps = get_unmatched_tp_fp_from_ious(ious, threshold)
 
                 ap = calculate_ap(tps, fps, num_label_gts)
                 mr = calculate_mr(tps, num_label_gts)

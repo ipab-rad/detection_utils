@@ -103,7 +103,8 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
             {
                 "score" : p.score,
                 "true_positive": p_idx in matched_prediction_idcs,
-                "frame": frame
+                "frame": frame,
+                "bbox": p.bbox.abbrv_str()
             }
             for p_idx, p in enumerate(label_preds)
         ]
@@ -118,10 +119,10 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
 
 def filter_detections_kb(detections: list[Detection3D]):
     # filter detections to only the experiment area
-    # x greater than 2
+    # x between 2 and 50
     # y between -8 and 7
     return [det for det in detections
-            if 2 < det.bbox.center_x
+            if 2 < det.bbox.center_x < 50
             and -8 < det.bbox.center_y < 7
             ]
 
