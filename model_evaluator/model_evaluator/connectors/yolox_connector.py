@@ -15,7 +15,7 @@ from tier4_perception_msgs.msg import (
 
 from model_evaluator.interfaces.inference_connector import InferenceConnector2D
 from model_evaluator.interfaces.detection2D import Detection2D, BBox2D
-from model_evaluator.interfaces.labels import parse_label
+from model_evaluator.interfaces.labels import parse_autoware_label
 
 
 class TensorrtYOLOXConnectorNode(Node):
@@ -68,7 +68,7 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
         score = object_wf.object.existence_probability
         label = object_wf.object.classification[0].label
 
-        return Detection2D(bbox, score, parse_label(label))
+        return Detection2D(bbox, score, parse_autoware_label(label))
 
     def run_inference(self, data: np.ndarray) -> Optional[list[Detection2D]]:
         with self.lock:

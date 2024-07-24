@@ -1,5 +1,6 @@
 from enum import Flag, auto
 from autoware_perception_msgs.msg import ObjectClassification
+from waymo_open_dataset import label_pb2
 
 class Label(Flag):
     UNKNOWN = auto()
@@ -15,8 +16,9 @@ class Label(Flag):
     ALL = UNKNOWN | CAR | TRUCK | BUS | BICYCLE | MOTORCYCLE | PEDESTRIAN
 
 ALL_LABELS = [Label.UNKNOWN, Label.CAR, Label.TRUCK, Label.BUS, Label.BICYCLE, Label.MOTORCYCLE, Label.PEDESTRIAN]
+WAYMO_LABELS = [Label.UNKNOWN, Label.VEHICLE, Label.PEDESTRIAN, Label.BICYCLE]
 
-def parse_label(label: int) -> Label:
+def parse_autoware_label(label: int) -> Label:
     match label:
         case ObjectClassification.UNKNOWN:
             return Label.UNKNOWN
@@ -32,5 +34,16 @@ def parse_label(label: int) -> Label:
             return Label.MOTORCYCLE
         case ObjectClassification.PEDESTRIAN:
             return Label.PEDESTRIAN
+        case _:
+            return Label.UNKNOWN
+
+def parse_waymo_label(label: int) -> Label:
+    match label:
+        case label_pb2.Label.TYPE_VEHICLE:
+            return Label.VEHICLE
+        case label_pb2.Label.TYPE_PEDESTRIAN:
+            return Label.PEDESTRIAN
+        case label_pb2.Label.TYPE_CYCLIST:
+            return Label.BICYCLE
         case _:
             return Label.UNKNOWN

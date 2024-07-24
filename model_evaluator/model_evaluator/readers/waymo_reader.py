@@ -1,10 +1,15 @@
 from typing import Generator, Optional
+import time
 
 import cv2
 import numpy as np
 import dask.dataframe as dd
 from waymo_open_dataset import v2, label_pb2
+from waymo_open_dataset.v2.perception.utils import lidar_utils
 from sensor_msgs.msg import PointCloud2
+from std_msgs.msg import Header
+import rclpy
+from sensor_msgs_py import point_cloud2
 
 from model_evaluator.interfaces.dataset_reader import (
     DatasetReader2D,
@@ -12,7 +17,7 @@ from model_evaluator.interfaces.dataset_reader import (
 )
 from model_evaluator.interfaces.detection2D import Detection2D, BBox2D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
-from model_evaluator.interfaces.labels import Label
+from model_evaluator.interfaces.labels import Label, parse_waymo_label
 
 
 def parse_context_names_and_timestamps(
@@ -70,18 +75,6 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
         )
 
     @staticmethod
-    def decode_waymo_label_2D(label: int) -> Label:
-        match label:
-            case label_pb2.Label.TYPE_VEHICLE:
-                return Label.VEHICLE
-            case label_pb2.Label.TYPE_PEDESTRIAN:
-                return Label.PEDESTRIAN
-            case label_pb2.Label.TYPE_CYCLIST:
-                return Label.BICYCLE
-            case _:
-                return Label.UNKNOWN
-
-    @staticmethod
     def decode_waymo_camera_detections(
         box_component: v2.CameraBoxComponent,
     ) -> list[Detection2D]:
@@ -95,9 +88,8 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
             box_component.type,
         ):
             bbox = BBox2D.from_cxcywh(cx, cy, w, h)
-            label = WaymoDatasetReader2D.decode_waymo_label_2D(label)
 
-            detections.append(Detection2D(bbox, 1.0, label))
+            detections.append(Detection2D(bbox, 1.0, parse_waymo_label(label)))
 
         return detections
 
@@ -132,25 +124,47 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
 
 
 class WaymoDatasetReader3D(WaymoDatasetReaderBase, DatasetReader3D):
+    TOP_LIDAR = 1
+
     def __init__(
         self,
         dataset_dir: str,
-        context_name: str,
-        timestamps: Optional[list[int]] = None,
+        context_name: str
     ):
         super().__init__(dataset_dir, context_name)
 
-        self.timestamps = timestamps
-
     @staticmethod
     def decode_waymo_point_cloud(
-        point_cloud_component: v2.LiDARComponent,
+        lidar_component: v2.LiDARComponent,
+            top_lidar_calibration: v2.LiDARCalibrationComponent
     ) -> PointCloud2:
-        return PointCloud2()
+        # convert from lidar component to numpy array
+        """Extract point clouds from LiDAR components."""
+        first_return_points = lidar_utils.convert_range_image_to_point_cloud(
+            lidar_component.range_image_return1, top_lidar_calibration
+        ).numpy()
+        second_return_points = lidar_utils.convert_range_image_to_point_cloud(
+            lidar_component.range_image_return2, top_lidar_calibration
+        ).numpy()
+
+        np_point_cloud = np.concatenate(
+            (first_return_points, second_return_points), axis=0
+        )
+
+        # convert from numpy array to PointCloud2 object
+        # Create a header
+        header = Header()
+        header.frame_id = "lidar_ouster_top"
+        header.stamp = rclpy.time.Time(time.time()).to_msg()
+
+        # Create a PointCloud2 message
+        point_cloud_msg = point_cloud2.create_cloud_xyz32(header, np_point_cloud)
+
+        return point_cloud_msg
 
     @staticmethod
     def decode_waymo_lidar_detections(
-        box_component: v2.LiDARComponent,
+        box_component: v2.LiDARBoxComponent,
     ) -> list[Detection3D]:
         detections = []
 
@@ -165,30 +179,41 @@ class WaymoDatasetReader3D(WaymoDatasetReaderBase, DatasetReader3D):
         ):
             bbox = BBox3D.from_oriented(cx, cy, cz, l, w, h, heading)
 
-            detections.append(Detection3D(bbox, 1.0))
+            detections.append(Detection3D(bbox, 1.0, parse_waymo_label(box_component.type)))
 
         return detections
 
+    def get_top_lidar_calibration(self, lidar_calibration_df):
+        # Get laser calibration
+        for _, row in lidar_calibration_df.iterrows():
+            lidar_calibration_component = (
+                v2.LiDARCalibrationComponent.from_dict(row)
+            )
+
+            if lidar_calibration_component.key.laser_name == self.TOP_LIDAR:
+                return lidar_calibration_component
+
     def read_data(
         self,
-    ) -> Generator[tuple[np.ndarray, Optional[list[Detection3D]]], None, None]:
+    ) -> Generator[tuple[PointCloud2, Optional[list[Detection3D]]], None, None]:
         lidar_df = self.read('lidar')
+        lidar_calibration_df = self.read('lidar_calibration')
         lidar_box_df = self.read('lidar_box')
+
+        top_lidar_calibration = self.get_top_lidar_calibration(lidar_calibration_df)
 
         lidar_w_box_df = v2.merge(lidar_df, lidar_box_df, right_group=True)
 
-        if self.timestamps is not None:
-            lidar_w_box_df = lidar_w_box_df[
-                lidar_w_box_df['key.frame_timestamp_micros'].isin(
-                    self.timestamps
-                )
-            ]
 
         for _, r in lidar_w_box_df.iterrows():
-            point_cloud = v2.LiDARComponent.from_dict(r)
+            lidar_component = v2.LiDARComponent.from_dict(r)
             lidar_box = v2.LiDARBoxComponent.from_dict(r)
 
-            point_cloud = self.decode_waymo_point_cloud(point_cloud)
+            # Only get frames from Top Lidar
+            if lidar_component.key.laser_name != self.TOP_LIDAR:
+                continue
+
+            point_cloud = self.decode_waymo_point_cloud(lidar_component, top_lidar_calibration)
             detections = self.decode_waymo_lidar_detections(lidar_box)
 
             yield point_cloud, detections

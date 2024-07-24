@@ -1,12 +1,12 @@
 from model_evaluator.connectors.lidar_connector import LiDARConnector
 from model_evaluator.interfaces.detection3D import Detection3D
-from model_evaluator.interfaces.labels import Label, ALL_LABELS
+from model_evaluator.interfaces.labels import Label, ALL_LABELS, WAYMO_LABELS
+from model_evaluator.readers.waymo_reader import WaymoDatasetReader3D
 from model_evaluator.utils.json_file_reader import write_json
 from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
 from model_evaluator.utils.metrics_calculator import calculate_ious_3d
 
 from scipy.optimize import linear_sum_assignment
-import json
 
 
 def process_rosbags_3D(connector:LiDARConnector):
@@ -42,7 +42,8 @@ def process_rosbags_3D(connector:LiDARConnector):
 
             results_per_class = process_frame_detections(
                 detections_in_experiment_area,
-                gt_dets, iou_thresholds, frame_counter
+                gt_dets, iou_thresholds, frame_counter,
+                ALL_LABELS
             )
 
             for result_label in results_per_class:
@@ -57,13 +58,49 @@ def process_rosbags_3D(connector:LiDARConnector):
     write_json(f"{results_dir}/{rosbag_to_run.bbox_file_name}.json", all_results)
 
 
-def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3D], iou_thresholds: dict[Label, float], frame:int)\
+def process_waymo_3D(connector:LiDARConnector):
+    # anything without an IoU threshold does not have any ground truths
+    iou_thresholds = {Label.PEDESTRIAN: 0.5, Label.CAR: 0.7, Label.BICYCLE: 0.5}
+
+    waymo_scene = "1024360143612057520_3580_000_3600_000"
+
+    waymo_reader = WaymoDatasetReader3D(
+        "/opt/ros_ws/rosbags/waymo/validation",
+        waymo_scene
+    )
+
+    waymo_data = waymo_reader.read_data()
+
+    all_results = {label.name: {"gt_count": 0, "results": []} for label in WAYMO_LABELS}
+
+    for frame_counter, (point_cloud, gt_dets) in enumerate(waymo_data):
+        if frame_counter == 210 or frame_counter == 220 or frame_counter == 230:
+            detections = connector.run_inference(point_cloud)
+
+            results_per_class = process_frame_detections(
+                detections, gt_dets, iou_thresholds, frame_counter, WAYMO_LABELS
+            )
+
+            for result_label in results_per_class:
+                overall_dict_entry = all_results[result_label.name]
+                result_dict_entry = results_per_class[result_label]
+
+                overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
+                overall_dict_entry["results"] += result_dict_entry["results"]
+
+    results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/waymo"
+
+    write_json(f"{results_dir}/{waymo_scene}.json", all_results)
+
+
+def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3D], iou_thresholds: dict[Label, float], frame:int, label_list: list[Label])\
         -> dict[Label, dict]:
+    # TODO implement below filtering for rosbag analysis
     # for pedestrians, log true and false positives
     # for everything else, only log false positives
     detection_results_per_class = {}
 
-    for label in ALL_LABELS:
+    for label in label_list:
         label_preds = [x for x in predictions if x.label == label]
         label_gts = [x for x in gts if x.label == label]
 

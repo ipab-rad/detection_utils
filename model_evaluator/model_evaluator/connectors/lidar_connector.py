@@ -10,7 +10,7 @@ from autoware_perception_msgs.msg import DetectedObjects,DetectedObject
 
 from model_evaluator.interfaces.inference_connector import InferenceConnector3D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
-from model_evaluator.interfaces.labels import parse_label
+from model_evaluator.interfaces.labels import parse_autoware_label
 
 
 class LiDARConnectorNode(Node):
@@ -56,7 +56,7 @@ class LiDARConnector(InferenceConnector3D):
         score = det_object.existence_probability
         label = det_object.classification[0].label
 
-        return Detection3D(bbox, score, parse_label(label))
+        return Detection3D(bbox, score, parse_autoware_label(label))
 
     def run_inference(self, msg: PointCloud2) -> Optional[list[Detection3D]]:
         with self.lock:
