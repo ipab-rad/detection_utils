@@ -47,3 +47,6 @@ def parse_waymo_label(label: int) -> Label:
             return Label.BICYCLE
         case _:
             return Label.UNKNOWN
+
+def labels_match(label1:Label, label2:Label) -> bool:
+    return bool(label1 & label2)

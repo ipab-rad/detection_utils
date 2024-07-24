@@ -155,7 +155,7 @@ class WaymoDatasetReader3D(WaymoDatasetReaderBase, DatasetReader3D):
         # Create a header
         header = Header()
         header.frame_id = "lidar_ouster_top"
-        header.stamp = rclpy.time.Time(time.time()).to_msg()
+        header.stamp = rclpy.time.Time(seconds=time.time()).to_msg()
 
         # Create a PointCloud2 message
         point_cloud_msg = point_cloud2.create_cloud_xyz32(header, np_point_cloud)
@@ -168,7 +168,7 @@ class WaymoDatasetReader3D(WaymoDatasetReaderBase, DatasetReader3D):
     ) -> list[Detection3D]:
         detections = []
 
-        for cx, cy, cz, l, w, h, heading in zip(
+        for cx, cy, cz, l, w, h, heading, obj_class in zip(
             box_component.box.center.x,
             box_component.box.center.y,
             box_component.box.center.z,
@@ -176,10 +176,11 @@ class WaymoDatasetReader3D(WaymoDatasetReaderBase, DatasetReader3D):
             box_component.box.size.y,
             box_component.box.size.z,
             box_component.box.heading,
+            box_component.type
         ):
             bbox = BBox3D.from_oriented(cx, cy, cz, l, w, h, heading)
 
-            detections.append(Detection3D(bbox, 1.0, parse_waymo_label(box_component.type)))
+            detections.append(Detection3D(bbox, 1.0, parse_waymo_label(obj_class)))
 
         return detections
 

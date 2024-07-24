@@ -1,6 +1,6 @@
 from model_evaluator.connectors.lidar_connector import LiDARConnector
 from model_evaluator.interfaces.detection3D import Detection3D
-from model_evaluator.interfaces.labels import Label, ALL_LABELS, WAYMO_LABELS
+from model_evaluator.interfaces.labels import Label, ALL_LABELS, WAYMO_LABELS, labels_match
 from model_evaluator.readers.waymo_reader import WaymoDatasetReader3D
 from model_evaluator.utils.json_file_reader import write_json
 from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
@@ -60,9 +60,11 @@ def process_rosbags_3D(connector:LiDARConnector):
 
 def process_waymo_3D(connector:LiDARConnector):
     # anything without an IoU threshold does not have any ground truths
-    iou_thresholds = {Label.PEDESTRIAN: 0.5, Label.CAR: 0.7, Label.BICYCLE: 0.5}
+    iou_thresholds = {Label.PEDESTRIAN: 0.5, Label.CAR: 0.7, Label.BICYCLE: 0.5, Label.UNKNOWN: 0.5}
 
     waymo_scene = "1024360143612057520_3580_000_3600_000"
+
+    print(f"{waymo_scene}")
 
     waymo_reader = WaymoDatasetReader3D(
         "/opt/ros_ws/rosbags/waymo/validation",
@@ -101,8 +103,8 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
     detection_results_per_class = {}
 
     for label in label_list:
-        label_preds = [x for x in predictions if x.label == label]
-        label_gts = [x for x in gts if x.label == label]
+        label_preds = [x for x in predictions if labels_match(x.label,label)]
+        label_gts = [x for x in gts if labels_match(x.label,label)]
 
         no_preds = len(label_preds) == 0
         no_gts = len(label_gts) == 0
