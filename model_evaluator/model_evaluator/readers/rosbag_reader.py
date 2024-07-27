@@ -148,8 +148,8 @@ class RosbagDatasetReader3D(DatasetReader3D):
 
         ped_bboxes_centers_json = read_json(f"{ped_bboxes_file_dir}/{ped_bboxes_file_name}.json")
 
-        start_frame:int = ped_bboxes_centers_json[0]["frame"] - 10  # 1 sec before first bbox
-        end_frame:int = ped_bboxes_centers_json[-1]["frame"] + 10  # 1 sec after last bbox
+        start_frame:int = ped_bboxes_centers_json[0]["frame"] + 1  # 1 frame before start
+        end_frame:int = ped_bboxes_centers_json[-1]["frame"]
 
         ped_bbox_tuples : list[tuple[list, int]] = [(ped_json["center"], ped_json["frame"]) for ped_json in ped_bboxes_centers_json]
 
