@@ -60,7 +60,7 @@ def process_rosbags_3D(connector:LiDARConnector):
 
 def process_waymo_3D(connector:LiDARConnector):
     # anything without an IoU threshold does not have any ground truths
-    iou_thresholds = {Label.PEDESTRIAN: 0.5, Label.CAR: 0.7, Label.BICYCLE: 0.5, Label.UNKNOWN: 0.5}
+    iou_thresholds = {Label.PEDESTRIAN: 0.5, Label.VEHICLE: 0.7, Label.BICYCLE: 0.5, Label.UNKNOWN: 0.5}
 
     waymo_scene = "1024360143612057520_3580_000_3600_000"
 
@@ -187,3 +187,4 @@ def lidar_run():
     )
 
     process_rosbags_3D(connector)
+    # process_waymo_3D(connector)

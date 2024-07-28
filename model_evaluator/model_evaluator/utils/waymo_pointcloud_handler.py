@@ -119,7 +119,7 @@ class WaymoPointcloudHandler(Node):
         return bbox
 
     def visualise_pointcloud_w_bboxes(
-        self, pointcloud_o3d, objects_o3d, point_size=1
+        self, pointcloud_o3d, objects_o3d, point_size=1.8
     ):
         """Visualise a point cloud with Open3D."""
         vis = o3d.visualization.Visualizer()
@@ -338,7 +338,7 @@ class WaymoPointcloudHandler(Node):
         opt = vis.get_render_option()
         opt.background_color = np.asarray([0, 0, 0])  # Set background to black
         opt.point_color_option = o3d.visualization.PointColorOption.Color
-        opt.point_size = 1  # Set initial point size
+        opt.point_size = 1.8  # Set initial point size
 
         idx = 0
         try:
@@ -361,9 +361,20 @@ class WaymoPointcloudHandler(Node):
     def visualise_lidar_frame(self, selected_lidar_seq_id):
         """Visualise a selected point cloud."""
         # Visualise point cloud with ground truth bounding boxes
+        center = [-28.99, 5.31, 0.97]
+        dims = [5.32, 2.24, 2.37]
+        heading = 0.86
+
+        extra_box = self.create_bounding_box(
+            center,
+            self.heading_to_rotation_matrix(heading),
+            dims,
+            [0, 1, 0],
+        )
+
         self.visualise_pointcloud_w_bboxes(
             self.top_lidar_pointclouds_o3d[selected_lidar_seq_id],
-            self.lidar_bboxes_o3d[selected_lidar_seq_id],
+            self.lidar_bboxes_o3d[selected_lidar_seq_id] + [extra_box],
         )
 
 
@@ -373,8 +384,8 @@ def main(args=None):
 
     # ** Change dataset_dir according to host waymo dataset location **
 
-    dataset_dir = '/mnt/mydrive/waymo_od/training'
-    context_name = '10023947602400723454_1120_000_1140_000'
+    dataset_dir = '/opt/ros_ws/rosbags/waymo/validation'
+    context_name = '1024360143612057520_3580_000_3600_000'
 
     # dataset_dir = '/mnt/mydrive/waymo_od/validation'
     # context_name = '10359308928573410754_720_000_740_000'
@@ -390,7 +401,8 @@ def main(args=None):
     handler = WaymoPointcloudHandler(
         dataset_dir, context_name, mode='visualiser'
     )
-    handler.visualise_all_lidar_pointclouds()
+    # handler.visualise_all_lidar_pointclouds()
+    handler.visualise_lidar_frame(22)
 
     # Shutdown ROS2
     handler.destroy_node()

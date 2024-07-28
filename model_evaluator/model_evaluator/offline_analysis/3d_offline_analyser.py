@@ -1,4 +1,4 @@
-from model_evaluator.interfaces.labels import ALL_LABELS
+from model_evaluator.interfaces.labels import ALL_LABELS, WAYMO_LABELS
 from model_evaluator.utils.json_file_reader import read_json
 
 import numpy as np
@@ -12,7 +12,9 @@ def analyse():
 
     per_class_results = read_json(f"{file_path}/{file_name}.json")
 
-    for label in ALL_LABELS:
+    labels_to_use = ALL_LABELS
+
+    for label in labels_to_use:
         label_results = per_class_results[label.name]
 
         gt_count = label_results["gt_count"]

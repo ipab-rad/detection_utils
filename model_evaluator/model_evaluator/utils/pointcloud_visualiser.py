@@ -171,9 +171,9 @@ class PointCloudVisualizer:
         color = [1, 0.5, 1]  # Pink
         bbox = self.create_bounding_box(center, rot_matrix, dimensions, color)
 
-        center2 = [13.21, -1.07, -0.63]
-        dims2 = [0.84, 0.69, 1.43]
-        yaw2 = 1.57
+        center2 = [43.3, -4.4, 0.2]
+        dims2 = [0.5, 0.7, 1.9]
+        yaw2 = 0
         color2 = [1, 0.5, 1]  # Pink
 
         bbox2_bold = self.get_bold_bbox(
