@@ -1,6 +1,6 @@
-import json
 from typing import Generator, Optional
 from datetime import time
+from os.path import isfile
 
 import numpy as np
 import rosbag2_py
@@ -133,11 +133,14 @@ class RosbagDatasetReader3D(DatasetReader3D):
     gt_ped_bbox_dims = [0.5, 0.7, 1.9]  # fixed size for ease
     gt_ped_bbox_heading = 0  # axis aligned for ease
 
+    annotations_present:bool
+
     def __init__(self, path: str, pointcloud_topic: str, bbox_file_name:str):
         self.path = path
         self.pointcloud_topic = pointcloud_topic
 
         self.reader = RosbagReader(path, {pointcloud_topic: PointCloud2})
+        self.annotations_present = True
         self.gt_detections_by_frame, self.start_frame, self.end_frame = self.read_bboxes_from_files(bbox_file_name)
 
     def read_bboxes_from_files(self, bbox_file_name:str) -> tuple[dict[int,list[Detection3D]], int, int]:
@@ -145,6 +148,13 @@ class RosbagDatasetReader3D(DatasetReader3D):
 
         ped_bboxes_file_dir = f"{bboxes_parent_dir}/scene_boxes"
         ped_bboxes_file_name = bbox_file_name
+
+        annotations_file = f"{ped_bboxes_file_dir}/{ped_bboxes_file_name}.json"
+
+        self.annotations_present = isfile(annotations_file)
+
+        if not self.annotations_present:
+            return {}, 0, 0
 
         ped_bboxes_centers_json = read_json(f"{ped_bboxes_file_dir}/{ped_bboxes_file_name}.json")
 

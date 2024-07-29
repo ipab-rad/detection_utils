@@ -3,7 +3,7 @@ from model_evaluator.interfaces.detection3D import Detection3D
 from model_evaluator.interfaces.labels import Label, ALL_LABELS, WAYMO_LABELS, labels_match
 from model_evaluator.readers.waymo_reader import WaymoDatasetReader3D
 from model_evaluator.utils.json_file_reader import write_json
-from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path
+from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path, KBRosbag
 from model_evaluator.utils.metrics_calculator import calculate_ious_3d
 
 from scipy.optimize import linear_sum_assignment
@@ -16,13 +16,18 @@ def process_rosbags_3D(connector:LiDARConnector):
 
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
 
-    rosbag_to_run = next(x for x in rosbags
-               if x.metadata.distance == "10m" and x.metadata.vru_type == "ped"  and
-               x.metadata.take == 0 and x.metadata.count == 1)
+    for r in rosbags:
+        process_single_rosbag_3D(connector, r, iou_thresholds)
 
-    print(rosbag_to_run.metadata)
 
-    rosbag_reader = rosbag_to_run.get_reader_3d()
+def process_single_rosbag_3D(connector:LiDARConnector, rosbag:KBRosbag, iou_thresholds: dict[Label, float]):
+    print(rosbag.metadata)
+
+    rosbag_reader = rosbag.get_reader_3d()
+
+    if not rosbag_reader.annotations_present:
+        print("no annotations")
+        return
 
     rosbag_data = rosbag_reader.read_data()
 
@@ -35,27 +40,26 @@ def process_rosbags_3D(connector:LiDARConnector):
         if frame_counter < start_frame or frame_counter > end_frame:
             continue
 
-        if frame_counter == 210 or frame_counter == 220 or frame_counter == 230:
-            detections = connector.run_inference(point_cloud)
+        detections = connector.run_inference(point_cloud)
 
-            detections_in_experiment_area = filter_detections_kb(detections)
+        detections_in_experiment_area = filter_detections_kb(detections)
 
-            results_per_class = process_frame_detections(
-                detections_in_experiment_area,
-                gt_dets, iou_thresholds, frame_counter,
-                ALL_LABELS
-            )
+        results_per_class = process_frame_detections(
+            detections_in_experiment_area,
+            gt_dets, iou_thresholds, frame_counter,
+            ALL_LABELS
+        )
 
-            for result_label in results_per_class:
-                overall_dict_entry = all_results[result_label.name]
-                result_dict_entry = results_per_class[result_label]
+        for result_label in results_per_class:
+            overall_dict_entry = all_results[result_label.name]
+            result_dict_entry = results_per_class[result_label]
 
-                overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
-                overall_dict_entry["results"] += result_dict_entry["results"]
+            overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
+            overall_dict_entry["results"] += result_dict_entry["results"]
 
     results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb"
 
-    write_json(f"{results_dir}/{rosbag_to_run.bbox_file_name}.json", all_results)
+    write_json(f"{results_dir}/{rosbag.bbox_file_name}.json", all_results)
 
 
 def process_waymo_3D(connector:LiDARConnector):
@@ -76,19 +80,18 @@ def process_waymo_3D(connector:LiDARConnector):
     all_results = {label.name: {"gt_count": 0, "results": []} for label in WAYMO_LABELS}
 
     for frame_counter, (point_cloud, gt_dets) in enumerate(waymo_data):
-        if frame_counter == 210 or frame_counter == 220 or frame_counter == 230:
-            detections = connector.run_inference(point_cloud)
+        detections = connector.run_inference(point_cloud)
 
-            results_per_class = process_frame_detections(
-                detections, gt_dets, iou_thresholds, frame_counter, WAYMO_LABELS
-            )
+        results_per_class = process_frame_detections(
+            detections, gt_dets, iou_thresholds, frame_counter, WAYMO_LABELS
+        )
 
-            for result_label in results_per_class:
-                overall_dict_entry = all_results[result_label.name]
-                result_dict_entry = results_per_class[result_label]
+        for result_label in results_per_class:
+            overall_dict_entry = all_results[result_label.name]
+            result_dict_entry = results_per_class[result_label]
 
-                overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
-                overall_dict_entry["results"] += result_dict_entry["results"]
+            overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
+            overall_dict_entry["results"] += result_dict_entry["results"]
 
     results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/waymo"
 

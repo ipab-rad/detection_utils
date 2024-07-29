@@ -1,6 +1,7 @@
 from model_evaluator.bbox_generator.keyframe_interpolator import KeyframeInterpolator
 from model_evaluator.utils.json_file_reader import read_json, write_json
-
+import glob
+from pathlib import Path
 
 def create_bboxes_from_keyframes_file(file_path:str):
     bboxes = read_json(f"keyframes/{file_path}.json")
@@ -16,4 +17,7 @@ def create_bboxes_from_keyframes_file(file_path:str):
 
 
 if __name__ == "__main__":
-    create_bboxes_from_keyframes_file("10m_1_ped_0.json")
+    paths = glob.glob("keyframes/*")
+
+    for p in paths:
+        create_bboxes_from_keyframes_file(Path(p).stem)
