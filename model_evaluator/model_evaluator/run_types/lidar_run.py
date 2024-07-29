@@ -7,6 +7,8 @@ from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path, KBRos
 from model_evaluator.utils.metrics_calculator import calculate_ious_3d
 
 from scipy.optimize import linear_sum_assignment
+import glob
+from pathlib import Path
 
 
 def process_rosbags_3D(connector:LiDARConnector):
@@ -18,7 +20,6 @@ def process_rosbags_3D(connector:LiDARConnector):
 
     for r in rosbags:
         process_single_rosbag_3D(connector, r, iou_thresholds)
-
 
 def process_single_rosbag_3D(connector:LiDARConnector, rosbag:KBRosbag, iou_thresholds: dict[Label, float]):
     print(rosbag.metadata)
@@ -66,8 +67,13 @@ def process_waymo_3D(connector:LiDARConnector):
     # anything without an IoU threshold does not have any ground truths
     iou_thresholds = {Label.PEDESTRIAN: 0.5, Label.VEHICLE: 0.7, Label.BICYCLE: 0.5, Label.UNKNOWN: 0.5}
 
-    waymo_scene = "1024360143612057520_3580_000_3600_000"
+    waymo_scenes = [s for s in [Path(p).stem for p in glob.glob("/opt/ros_ws/rosbags/waymo/validation/lidar/*")] if s != "_metadata"]
 
+    for ws in waymo_scenes:
+        process_single_waymo_scene_3D(connector, ws, iou_thresholds)
+
+
+def process_single_waymo_scene_3D(connector:LiDARConnector, waymo_scene:str, iou_thresholds: dict[Label, float]):
     print(f"{waymo_scene}")
 
     waymo_reader = WaymoDatasetReader3D(
@@ -137,9 +143,11 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
 
             label_pred_bboxes = [x.bbox for x in label_preds]
             label_gt_bboxes = [x.bbox for x in label_gts]
+
+            # this puts ground truths on the columns and predictions on the rows
             ious = calculate_ious_3d(label_pred_bboxes, label_gt_bboxes)
 
-            matched_prediction_idcs, _ = match_bounding_boxes(ious, threshold)
+            _, matched_prediction_idcs = match_bounding_boxes(ious, threshold)
 
         detection_results = [
             {
@@ -189,5 +197,5 @@ def lidar_run():
         '/perception/object_recognition/detection/centerpoint/objects',
     )
 
-    process_rosbags_3D(connector)
-    # process_waymo_3D(connector)
+    # process_rosbags_3D(connector)
+    process_waymo_3D(connector)

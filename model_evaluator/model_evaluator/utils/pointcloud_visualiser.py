@@ -164,17 +164,17 @@ class PointCloudVisualizer:
         origin_basis = self.create_basis([0.0, 0.0, 0.0])
 
         # Define the location where you want to place the box and create it
-        center = [13.175, 0.375, -0.65]
+        center = [8.048, 2.455, -0.65]
         rot_matrix = np.eye(3)          # Identity, i.e no rotation
         dimensions = [0.5, 0.7, 1.9]    # x (depth), y (width), z (height)
 
         color = [1, 0.5, 1]  # Pink
-        bbox = self.create_bounding_box(center, rot_matrix, dimensions, color)
+        bbox1_bold = self.get_bold_bbox(center, rot_matrix, dimensions, color)
 
-        center2 = [43.3, -4.4, 0.2]
-        dims2 = [0.5, 0.7, 1.9]
-        yaw2 = 0
-        color2 = [1, 0.5, 1]  # Pink
+        center2 = [8.13,2.64,-0.53]
+        dims2 = [0.75,0.68,1.28]
+        yaw2 = 1.66
+        color2 = [1, 0.5, 0]  # Pink
 
         bbox2_bold = self.get_bold_bbox(
             center2,
@@ -189,7 +189,7 @@ class PointCloudVisualizer:
 
         # car_bboxes = self.car_bboxes()
 
-        all_bboxes = [] + bbox2_bold
+        all_bboxes = bbox1_bold + bbox2_bold
 
         # Add geometries to visualizer
         vis.add_geometry(o3d_pc)
