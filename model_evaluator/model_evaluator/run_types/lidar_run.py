@@ -58,7 +58,7 @@ def process_single_rosbag_3D(connector:LiDARConnector, rosbag:KBRosbag, iou_thre
             overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
             overall_dict_entry["results"] += result_dict_entry["results"]
 
-    results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb"
+    results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb/no_ground"
 
     write_json(f"{results_dir}/{rosbag.bbox_file_name}.json", all_results)
 
@@ -197,5 +197,5 @@ def lidar_run():
         '/perception/object_recognition/detection/centerpoint/objects',
     )
 
-    # process_rosbags_3D(connector)
-    process_waymo_3D(connector)
+    process_rosbags_3D(connector)
+    # process_waymo_3D(connector)
