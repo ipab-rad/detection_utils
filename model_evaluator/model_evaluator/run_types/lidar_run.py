@@ -99,7 +99,7 @@ def process_single_waymo_scene_3D(connector:LiDARConnector, waymo_scene:str, iou
             overall_dict_entry["gt_count"] += result_dict_entry["gt_count"]
             overall_dict_entry["results"] += result_dict_entry["results"]
 
-    results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/waymo"
+    results_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/waymo/no_ground"
 
     write_json(f"{results_dir}/{waymo_scene}.json", all_results)
 
@@ -197,5 +197,5 @@ def lidar_run():
         '/perception/object_recognition/detection/centerpoint/objects',
     )
 
-    process_rosbags_3D(connector)
-    # process_waymo_3D(connector)
+    # process_rosbags_3D(connector)
+    process_waymo_3D(connector)

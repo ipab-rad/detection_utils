@@ -46,23 +46,19 @@ def append_results(all_results, results_per_class):
 
 
 def analyse():
-    file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb/has_ground"
+    file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb/no_ground"
     results_files = results_file_listing()
     range_groups, vru_type_groups = results_files_groupings()
 
-    by_range = True
-    by_vru_type = False
-    chosen_range_name = "40m"
-    chosen_vru_type_name = "1_ped"
-    chosen_range_files = range_groups[chosen_range_name]
-    chosen_vru_type_files = vru_type_groups[chosen_vru_type_name]
+    chosen_range_names = []
+    chosen_vru_type_names = ["1_ped_bike"]
+    chosen_range_files = [rf for n in chosen_range_names for rf in range_groups[n] ]
+    chosen_vru_type_files = [vtf for n in chosen_vru_type_names for vtf in vru_type_groups[n] ]
 
     labels_to_use = ALL_LABELS
 
-    files_to_combine = [
-        file_name for file_idx, file_name in enumerate(results_files)
-        if (not by_range or file_idx in chosen_range_files) and (not by_vru_type or file_idx in chosen_vru_type_files)
-    ]
+    files_to_combine = [results_files[x] for x in range(len(results_files)) if x in chosen_range_files
+                        or x in chosen_vru_type_files]
 
     print(files_to_combine)
 
@@ -72,8 +68,8 @@ def analyse():
         per_class_results = read_json(f"{file_path}/{file_name}.json")
         append_results(all_results, per_class_results)
 
-    group_name = chosen_range_name if by_range else (chosen_vru_type_name if by_vru_type else "")
-    print(f"Grouped results for {group_name}")
+    print(f"Grouping by range {chosen_range_names}")
+    print(f"Grouping by vru type {chosen_vru_type_names}")
 
     for label in labels_to_use:
         label_results = all_results[label.name]
