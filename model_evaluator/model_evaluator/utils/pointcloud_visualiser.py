@@ -147,34 +147,70 @@ class PointCloudVisualizer:
 
         return [main, plus_one, plus_two, minus_one, minus_two]
 
-    def visualize_pointcloud(self, pc_np_array, lidar_frame, point_size=1.8):
+    def visualize_pointcloud(self, pc_np_array, lidar_frame, point_size=3):
         """Visualize a point cloud with Open3D."""
         vis = o3d.visualization.Visualizer()
         vis.create_window()
 
         opt = vis.get_render_option()
         opt.background_color = np.asarray([0, 0, 0])  # Set background to black
-        opt.point_color_option = o3d.visualization.PointColorOption.XCoordinate
+        #opt.point_color_option = o3d.visualization.PointColorOption.XCoordinate
         opt.point_size = point_size  # Set initial point size
 
+        filter = lambda x: 41.75 <= x[0] <= 44.25 and -1.8 <= x[1] <= 0.9 and -1.1 <= x[2] <= 2
+
+        # # pedestrian clusters for 40m_2_ped_same_way_0 frame 103
+        # ped = [92985, 92986, 94523, 94524, 94525, 96074, 96075, 96076, 96077, 97639, 97640, 97641,
+        #        97642, 99214, 99215, 99216, 99217, 100834, 100835, 100836, 102431, 102432, 102433,
+        #        103982, 103983, 103985, 103986, 105516, 105517, 105519, 105520, 107023, 107024, 107025,
+        #        107028, 108667, 108670, 108672]
+
+        # ped_2 = [89901, 89902, 89903, 91452, 91453, 91454, 91455, 92987, 92988, 94526, 100837,
+        #          102434, 102435, 103984, 103987, 105518, 105521, 105522, 107026, 107027, 107029,
+        #          107030, 107031, 108668, 108669, 108673]
+
+        indices_1 = [x for x in range(0, pc_np_array.shape[0])
+                if filter(pc_np_array[x])]
+        indices_2 = [x for x in range(0, pc_np_array.shape[0]) if not filter(pc_np_array[x])]
+        indices_3 = []
+
+        # indices_1 = ped
+        # indices_2 = [x for x in range(0,pc_np_array.shape[0]) if x not in ped+ped_2]
+        # indices_3 = ped_2
+
+        # pc_np_array_1 = pc_np_array  # no splitting
+        pc_np_array_1 = pc_np_array[indices_1]
+        pc_np_array_2 = pc_np_array[indices_2]
+        pc_np_array_3 = pc_np_array[indices_3]
+
         o3d_pc = o3d.geometry.PointCloud()
-        o3d_pc.points = o3d.utility.Vector3dVector(pc_np_array)
+        o3d_pc.points = o3d.utility.Vector3dVector(pc_np_array_1)
+        o3d_pc.paint_uniform_color([1,0,0])
+
+        o3d_pc2 = o3d.geometry.PointCloud()
+        o3d_pc2.points = o3d.utility.Vector3dVector(pc_np_array_2)
+        o3d_pc2.paint_uniform_color([0.4,0.4,0.4])
+
+        o3d_pc3 = o3d.geometry.PointCloud()
+        o3d_pc3.points = o3d.utility.Vector3dVector(pc_np_array_3)
+        o3d_pc3.paint_uniform_color([0,0.5,1])
 
         # Create basis at origin
         origin_basis = self.create_basis([0.0, 0.0, 0.0])
 
-        # Define the location where you want to place the box and create it
-        center = [8.048, 2.455, -0.65]
+        # Define the location where you want to place the box and create it[
+
+        center = [13.3, 4.4,-0.65]
         rot_matrix = np.eye(3)          # Identity, i.e no rotation
         dimensions = [0.5, 0.7, 1.9]    # x (depth), y (width), z (height)
 
-        color = [1, 0.5, 1]  # Pink
+        color = [0, 1, 1]  # Pink
         bbox1_bold = self.get_bold_bbox(center, rot_matrix, dimensions, color)
 
-        center2 = [8.13,2.64,-0.53]
-        dims2 = [0.75,0.68,1.28]
-        yaw2 = 1.66
-        color2 = [1, 0.5, 0]  # Pink
+        center2 = [43.02,-0.47,-0.04]
+        dims2 = [0.91,0.78,1.64]
+        yaw2 = 1.23
+        color2 = [1, 0.5, 0]  # Orange
 
         bbox2_bold = self.get_bold_bbox(
             center2,
@@ -189,10 +225,12 @@ class PointCloudVisualizer:
 
         # car_bboxes = self.car_bboxes()
 
-        all_bboxes = bbox1_bold + bbox2_bold
+        all_bboxes = bbox2_bold
 
         # Add geometries to visualizer
         vis.add_geometry(o3d_pc)
+        vis.add_geometry(o3d_pc2)
+        vis.add_geometry(o3d_pc3)
         vis.add_geometry(origin_basis)
 
         for bb in all_bboxes:

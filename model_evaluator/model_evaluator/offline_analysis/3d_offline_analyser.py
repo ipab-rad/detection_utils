@@ -2,6 +2,8 @@ from model_evaluator.interfaces.labels import ALL_LABELS, WAYMO_LABELS
 from model_evaluator.utils.json_file_reader import read_json
 
 import numpy as np
+from pathlib import Path
+import glob
 
 from model_evaluator.utils.metrics_calculator import calculate_ap
 
@@ -46,7 +48,7 @@ def append_results(all_results, results_per_class):
 
 
 def analyse():
-    file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb/no_ground"
+    file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/waymo/no_ground"
     results_files = results_file_listing()
     range_groups, vru_type_groups = results_files_groupings()
 
@@ -55,10 +57,12 @@ def analyse():
     chosen_range_files = [rf for n in chosen_range_names for rf in range_groups[n] ]
     chosen_vru_type_files = [vtf for n in chosen_vru_type_names for vtf in vru_type_groups[n] ]
 
-    labels_to_use = ALL_LABELS
+    labels_to_use = WAYMO_LABELS
 
-    files_to_combine = [results_files[x] for x in range(len(results_files)) if x in chosen_range_files
-                        or x in chosen_vru_type_files]
+    files_to_combine = [Path(p).stem for p in glob.glob(f"{file_path}/*")]
+
+    # files_to_combine = [results_files[x] for x in range(len(results_files)) if x in chosen_range_files
+    #                     or x in chosen_vru_type_files]
 
     print(files_to_combine)
 
