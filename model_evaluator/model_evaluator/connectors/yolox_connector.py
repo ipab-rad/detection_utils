@@ -35,6 +35,12 @@ class TensorrtYOLOXConnectorNode(Node):
             10,
         )
 
+        ros_thread = threading.Thread(target=rclpy.spin, args=[self], daemon=True)
+        ros_thread.start()
+
+    def __del__(self):
+        self.destroy_node()
+
     def subscription_callback(self, msg: DetectedObjectsWithFeature):
         self.results_queue.put(msg)
 
@@ -49,12 +55,8 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
 
         self.node = TensorrtYOLOXConnectorNode(input_topic, output_topic)
 
-        ros_thread = threading.Thread(target=rclpy.spin, args=[self.node])
-        ros_thread.start()
-
     def __del__(self):
-        self.node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
     def detected_object_with_feature_to_detection2D(
         self, object_wf: DetectedObjectWithFeature
