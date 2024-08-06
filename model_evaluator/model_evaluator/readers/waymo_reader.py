@@ -1,16 +1,18 @@
+import math
 from typing import Generator, Optional
 
 import cv2
 import numpy as np
 import dask.dataframe as dd
-from waymo_open_dataset import v2, label_pb2
+from waymo_open_dataset import v2
+from waymo_open_dataset.v2.perception.box import DifficultyLevelType, BoxType
 from sensor_msgs.msg import PointCloud2
 
 from model_evaluator.interfaces.dataset_reader import (
     DatasetReader2D,
     DatasetReader3D,
 )
-from model_evaluator.interfaces.detection2D import Detection2D, BBox2D
+from model_evaluator.interfaces.detection2D import Detection2D, BBox2D, DifficultyLevel
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D
 from model_evaluator.interfaces.labels import Label
 
@@ -71,15 +73,28 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
 
     @staticmethod
     def decode_waymo_label_2D(label: int) -> Label:
-        match label:
-            case label_pb2.Label.TYPE_VEHICLE:
+        match BoxType(label):
+            case BoxType.TYPE_VEHICLE:
                 return Label.VEHICLE
-            case label_pb2.Label.TYPE_PEDESTRIAN:
+            case BoxType.TYPE_PEDESTRIAN:
                 return Label.PEDESTRIAN
-            case label_pb2.Label.TYPE_CYCLIST:
+            case BoxType.TYPE_CYCLIST:
                 return Label.BICYCLE
             case _:
                 return Label.UNKNOWN
+            
+    @staticmethod
+    def decode_waymo_difficulty_level(difficulty_level: float) -> DifficultyLevel:
+        if math.isnan(difficulty_level):
+            return DifficultyLevel.UNKNOWN
+        
+        match DifficultyLevelType(difficulty_level):
+            case DifficultyLevelType.LEVEL_1:
+                return DifficultyLevel.LEVEL_1
+            case DifficultyLevelType.LEVEL_2:
+                return DifficultyLevel.LEVEL_3
+            case _:
+                return DifficultyLevel.UNKNOWN
 
     @staticmethod
     def decode_waymo_camera_detections(
@@ -87,17 +102,20 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
     ) -> list[Detection2D]:
         detections = []
 
-        for cx, cy, w, h, label in zip(
+        for cx, cy, w, h, label, difficulty_level in zip(
             box_component.box.center.x,
             box_component.box.center.y,
             box_component.box.size.x,
             box_component.box.size.y,
             box_component.type,
+            box_component.difficulty_level.detection,
         ):
             bbox = BBox2D.from_cxcywh(cx, cy, w, h)
-            label = WaymoDatasetReader2D.decode_waymo_label_2D(label)
+            label = WaymoDatasetReader2D.decode_waymo_label_2D(BoxType(label))
 
-            detections.append(Detection2D(bbox, 1.0, label))
+            difficulty_level = WaymoDatasetReader2D.decode_waymo_difficulty_level(difficulty_level)
+
+            detections.append(Detection2D(bbox, label, difficulty_level=difficulty_level))
 
         return detections
 

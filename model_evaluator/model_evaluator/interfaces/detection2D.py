@@ -1,3 +1,5 @@
+from enum import Enum, auto
+import math
 from model_evaluator.interfaces.labels import Label
 
 class BBox2D:
@@ -40,6 +42,21 @@ class BBox2D:
         bbox.y2 = cy + h / 2
 
         return bbox
+    
+    def __str__(self) -> str:
+        return f'[{self.x1}, {self.y1}, {self.x2}, {self.y2}]'
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+    
+    def width(self) -> float:
+        return (self.x2 - self.x1)
+    
+    def height(self) -> float:
+        return (self.y2 - self.y1)
+    
+    def center(self) -> tuple[float, float]:
+        return self.x1 + self.width() / 2, self.y1 + self.height() / 2
 
     def area(self) -> float:
         return (self.x2 - self.x1) * (self.y2 - self.y1)
@@ -57,12 +74,40 @@ class BBox2D:
 
         return intersect_area / (self.area() + other.area() - intersect_area)
 
-class Detection2D:
-    bbox: BBox2D
-    score: float
-    label: Label
 
-    def __init__(self, bbox: BBox2D, score: float, label: Label):
+class DifficultyLevel(Enum):
+    """Difficulty level for detecting object. Higher level is harder"""
+
+    UNKNOWN = auto()
+    LEVEL_1 = auto()
+    LEVEL_2 = auto()
+
+
+class Detection2D:
+    """Detected object in an image"""
+
+    # TODO: rename to Object2D
+
+    bbox: BBox2D
+    """Bounding box of object"""
+
+    label: Label
+    """Label of object"""
+
+    score: float
+    """Confidence score for detected object, NaN for ground truth object"""
+
+    difficulty_level: DifficultyLevel
+    """Difficulty level for detecting object"""
+
+    def __init__(self, bbox: BBox2D, label: Label, score: float = math.nan, difficulty_level: DifficultyLevel = DifficultyLevel.UNKNOWN):
         self.bbox = bbox
-        self.score = score
         self.label = label
+        self.score = score
+        self.difficulty_level = difficulty_level
+
+    def __str__(self) -> str:
+        return f'{self.label} @ {self.bbox}'
+
+    def __repr__(self) -> str:
+        return self.__str__()

@@ -1,13 +1,16 @@
 import re
+import os
 import glob
 from datetime import datetime
+from typing import Optional
 
-from model_evaluator.readers.rosbag_reader import RosbagDatasetReader2D, RosbagDatasetReader3D
-from model_evaluator.interfaces.labels import Label
+from model_evaluator.readers.rosbag_reader import RosbagDatasetReader3D
+from model_evaluator.readers.kb_rosbag_reader import KBRosbagReader2D
 
 class KBRosbagMetaData:
     timestamp: datetime
-    distance: str
+    name: str
+    distance: Optional[int]
     count: int
     vru_type: str
     take: int
@@ -15,12 +18,14 @@ class KBRosbagMetaData:
     def __init__(
         self,
         timestamp: datetime,
-        distance: str,
+        name: str,
+        distance: Optional[int],
         count: int,
         vru_type: str,
         take: int,
     ):
         self.timestamp = timestamp
+        self.name = name
         self.distance = distance
         self.count = count
         self.vru_type = vru_type
@@ -37,59 +42,70 @@ class KBRosbagMetaData:
         return self.__str__()
 
 class KBRosbag:
-    IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
     LIDAR_TOPIC = '/sensor/lidar/top/points'
 
     metadata: KBRosbagMetaData
 
     def __init__(self, path:str):
         self.path = path
-        self.metadata = self.parse_metadata()
+        self.metadata = self._parse_metadata(path)
 
-    def empty(self):
-        return self.metadata is None
-    
-    def get_expectations(self) -> dict[Label, int]:
-        # TODO: Add support for cycling rosbags
-        return {Label.PEDESTRIAN: self.metadata.count}
+    def get_reader_2d(self) -> KBRosbagReader2D:
+        keyframes_file = os.path.join(self.path, 'keyframes.json')
+        if not os.path.exists(keyframes_file):
+            keyframes_file = None
 
-    def get_reader_2d(self) -> RosbagDatasetReader2D:
-        return RosbagDatasetReader2D(self.path, self.IMAGE_TOPIC)
+        return KBRosbagReader2D(self.path, keyframes_file)
 
     def get_reader_3d(self) -> RosbagDatasetReader3D:
         return RosbagDatasetReader3D(self.path, self.LIDAR_TOPIC)
 
-    def parse_metadata(self):
+    @staticmethod
+    def _parse_metadata(path: str) -> KBRosbagMetaData:
         pattern = re.compile(
-            r'.*/(?P<time>\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})_(?P<name>.+)'
+            r'.*/(?P<time>\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})_(?P<name>[^/]+)/?'
         )
         name_pattern = re.compile(
-            r'(?P<distance>\d+m)_(?P<count>\d)_(?P<type>(\w|_)+)_(?P<take>\d)'
+            r'(?P<distance>.*)_(?P<count>\d)_(?P<type>(\w|_)+)_(?P<take>\d)'
         )
+        distance_pattern = re.compile(r'(\d+)m')
 
-        match = pattern.match(self.path)
+        match = pattern.match(path)
 
         if not match:
-            return None
+            raise ValueError(f"Could not parse the path of the rosbag ('{path}').")
 
         timestamp = datetime.strptime(match.group('time'), '%Y_%m_%d-%H_%M_%S')
+        name = match.group('name')
 
-        name_match = name_pattern.match(match.group('name'))
+        name_match = name_pattern.match(name)
 
         if not name_match:
-            return None
+            raise ValueError(f"Could not parse the name of the rosbag ('{name}').")
 
-        distance = name_match.group('distance')
+        distance_match = distance_pattern.match(name_match.group('distance'))
+
+        if distance_match:
+            distance = int(distance_match.group(1))
+        else:
+            distance = None
+
         count = int(name_match.group('count'))
         vru_type = name_match.group('type')
         take = int(name_match.group('take'))
 
-        return KBRosbagMetaData(timestamp, distance, count, vru_type, take)
+        return KBRosbagMetaData(timestamp, name, distance, count, vru_type, take)
 
 
 def match_rosbags_in_path(path: str) -> list[KBRosbag]:
     paths = glob.glob(f'{path}/*/')
 
-    all_metadata = [KBRosbag(path) for path in paths]
+    rosbags = []
+    for path in paths:
+        try:
+            rosbags.append(KBRosbag(path))
+        except ValueError as e:
+            print(e)
+            continue
 
-    return [x for x in all_metadata if not x.empty()]
+    return rosbags

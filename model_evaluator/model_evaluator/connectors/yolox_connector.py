@@ -70,7 +70,7 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
         score = object_wf.object.existence_probability
         label = object_wf.object.classification[0].label
 
-        return Detection2D(bbox, score, parse_label(label))
+        return Detection2D(bbox, parse_label(label), score=score)
 
     def run_inference(self, data: np.ndarray) -> Optional[list[Detection2D]]:
         with self.lock:

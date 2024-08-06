@@ -6,6 +6,22 @@ from model_evaluator.interfaces.detection2D import BBox2D
 def to_cv_pts(bbox: BBox2D):
     return (round(bbox.x1), round(bbox.y1)), (round(bbox.x2), round(bbox.y2))
 
+def draw_frame_number(image, frame_number, text_height = 25, offset = 10, thickness = 2):
+    scale = cv.getFontScaleFromHeight(
+        cv.FONT_HERSHEY_SIMPLEX, text_height, thickness
+    )
+
+    ((width, _), _) = cv.getTextSize(str(frame_number), cv.FONT_HERSHEY_SIMPLEX, scale, thickness)
+
+    cv.putText(
+        image,
+        str(frame_number),
+        (image.shape[1] - width, text_height + offset),
+        cv.FONT_HERSHEY_SIMPLEX,
+        scale,
+        (0, 255, 0),
+        thickness,
+    )
 
 def draw_bboxes(image, gts, tps, fps, text_height = 25, offset = 10, thickness = 2):
     scale = cv.getFontScaleFromHeight(
@@ -18,7 +34,7 @@ def draw_bboxes(image, gts, tps, fps, text_height = 25, offset = 10, thickness =
 
         cv.putText(
             image,
-            str(gt.label.name),
+            str(gt.difficulty_level.name),
             (pt1[0], pt1[1] - offset),
             cv.FONT_HERSHEY_SIMPLEX,
             scale,
@@ -26,33 +42,33 @@ def draw_bboxes(image, gts, tps, fps, text_height = 25, offset = 10, thickness =
             thickness,
         )
 
-    for tp in tps:
-        pt1, pt2 = to_cv_pts(tp.bbox)
-        cv.rectangle(image, pt1, pt2, (0, 255, 0), thickness)
+    # for tp in tps:
+    #     pt1, pt2 = to_cv_pts(tp.bbox)
+    #     cv.rectangle(image, pt1, pt2, (0, 255, 0), thickness)
 
-        cv.putText(
-            image,
-            str(tp.label.name),
-            (pt1[0], pt1[1] - offset),
-            cv.FONT_HERSHEY_SIMPLEX,
-            scale,
-            (0, 255, 0),
-            thickness,
-        )
+    #     cv.putText(
+    #         image,
+    #         str(tp.label.name),
+    #         (pt1[0], pt1[1] - offset),
+    #         cv.FONT_HERSHEY_SIMPLEX,
+    #         scale,
+    #         (0, 255, 0),
+    #         thickness,
+    #     )
 
-    for fp in fps:
-        pt1, pt2 = to_cv_pts(fp.bbox)
-        cv.rectangle(image, pt1, pt2, (0, 0, 255), thickness)
+    # for fp in fps:
+    #     pt1, pt2 = to_cv_pts(fp.bbox)
+    #     cv.rectangle(image, pt1, pt2, (0, 0, 255), thickness)
 
-        cv.putText(
-            image,
-            str(fp.label.name),
-            (pt1[0], pt1[1] - offset),
-            cv.FONT_HERSHEY_SIMPLEX,
-            scale,
-            (0, 0, 255),
-            thickness,
-        )
+    #     cv.putText(
+    #         image,
+    #         str(fp.label.name),
+    #         (pt1[0], pt1[1] - offset),
+    #         cv.FONT_HERSHEY_SIMPLEX,
+    #         scale,
+    #         (0, 0, 255),
+    #         thickness,
+    #     )
 
 def draw_metrics(image, threshold, mean_ap, labels, num_gts_per_label, tps_per_label, fps_per_label, mrs_per_label, aps_per_label, text_height = 25, offset = 10, thickness = 2):
     scale = cv.getFontScaleFromHeight(
@@ -138,6 +154,35 @@ def draw_metrics(image, threshold, mean_ap, labels, num_gts_per_label, tps_per_l
 
     cv.bitwise_not(image, image, mask)
 
+def draw_matches(image, matches_dict, text_height = 25, offset = 10, thickness = 2):
+    scale = cv.getFontScaleFromHeight(
+        cv.FONT_HERSHEY_SIMPLEX, text_height, thickness
+    )
+
+    for i, label in enumerate(matches_dict):
+        if matches_dict[label][0] == matches_dict[label][1]:
+            color = (0, 255, 0)
+        else:
+            color = (0, 0, 255)
+
+        cv.putText(
+            image,
+            f'{label.name}',
+            (0, (i + 1) * (text_height + offset)),
+            cv.FONT_HERSHEY_SIMPLEX,
+            scale,
+            color,
+            thickness,
+        )
+        cv.putText(
+            image,
+            f'{matches_dict[label][1]}/{matches_dict[label][0]}',
+            (250, (i + 1) * (text_height + offset)),
+            cv.FONT_HERSHEY_SIMPLEX,
+            scale,
+            color,
+            thickness,
+        )
 
 def write_png_img(filename, image):
     cv.imwrite(f'{filename}.png', image)

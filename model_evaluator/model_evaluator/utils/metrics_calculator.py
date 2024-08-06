@@ -233,15 +233,20 @@ def calculate_mr_per_label(
 def compare_expectations(
     detections: list[Detection2D], expectations: dict[Label, int]
 ):
+    ret = True
+    dict = {}
+
     for label in expectations:
         label_detections = [
             detection for detection in detections if detection.label in label
         ]
 
-        if len(label_detections) != expectations[label]:
-            print(
-                f'Expected {expectations[label]} detections of {label}, got {len(label_detections)}'
-            )
-            return False
+        dict[label] = (expectations[label], len(label_detections))
 
-    return True
+        if len(label_detections) != expectations[label]:
+            # print(
+            #     f'Expected {expectations[label]} detections of {label}, got {len(label_detections)}'
+            # )
+            ret = False
+
+    return ret, dict
