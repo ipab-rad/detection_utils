@@ -30,6 +30,7 @@ class WaymoPointcloudHandler(Node):
         self.lidar_scans = {}
         self.top_lidar_pointclouds_o3d = {}
         self.top_lidar_pointclouds_ros2 = {}
+        self.top_lidar_pointclouds_o3d_extra = {}
         self.lidar_bboxes_o3d = {}
         self.total_lidar_frames = 0
 
@@ -105,11 +106,11 @@ class WaymoPointcloudHandler(Node):
         return yaw_rotation_matrix
 
     def create_bounding_box(
-        self,
-        center=[0.0, 0.0, 0.0],
-        rotation=np.eye(3),
-        dimensions=[0.5, 0.5, 1.0],
-        color=[0.0, 1.0, 0.0],
+            self,
+            center=[0.0, 0.0, 0.0],
+            rotation=np.eye(3),
+            dimensions=[0.5, 0.5, 1.0],
+            color=[0.0, 1.0, 0.0],
     ):
         """Create an oriented bounding box at the specified location."""
         bbox = o3d.geometry.OrientedBoundingBox(
@@ -119,7 +120,7 @@ class WaymoPointcloudHandler(Node):
         return bbox
 
     def visualise_pointcloud_w_bboxes(
-        self, pointcloud_o3d, objects_o3d, point_size=1.8
+            self, o3d_pc, objects_o3d, point_size=3, o3d_pc2=None
     ):
         """Visualise a point cloud with Open3D."""
         vis = o3d.visualization.Visualizer()
@@ -128,14 +129,16 @@ class WaymoPointcloudHandler(Node):
         # Set visualisation options
         opt = vis.get_render_option()
         opt.background_color = np.asarray([0, 0, 0])  # Set background to black
-        opt.point_color_option = o3d.visualization.PointColorOption.XCoordinate
+        # opt.point_color_option = o3d.visualization.PointColorOption.XCoordinate
         opt.point_size = point_size  # Set initial point size
 
         # Create basis at origin
         origin_basis = self.create_basis([0.0, 0.0, 0.0])
 
         # Add geometries to visualiser
-        vis.add_geometry(pointcloud_o3d)
+        vis.add_geometry(o3d_pc)
+        if o3d_pc2 is not None:
+            vis.add_geometry(o3d_pc2)
         vis.add_geometry(origin_basis)
         for obj in objects_o3d:
             vis.add_geometry(obj)
@@ -148,6 +151,7 @@ class WaymoPointcloudHandler(Node):
         ctr.set_zoom(0.06)  # Zoom level
 
         vis.run()
+        vis.capture_screen_image(f"imgs/temp.png")
         vis.destroy_window()
 
     def update_visualisation(self, vis, point_cloud, objects):
@@ -189,7 +193,7 @@ class WaymoPointcloudHandler(Node):
         return dd.read_parquet(paths)
 
     def convert_waymo_lidar_to_pointcloud(
-        self, lidar_component, lidar_calibration_component
+            self, lidar_component, lidar_calibration_component
     ):
         """Extract point clouds from LiDAR components."""
         first_return_points = lidar_utils.convert_range_image_to_point_cloud(
@@ -211,7 +215,7 @@ class WaymoPointcloudHandler(Node):
         return o3d_pointcloud
 
     def convert_to_ros_pointcloud2(
-        self, lidar_points, ros_frame_id="lidar_ouster_top"
+            self, lidar_points, ros_frame_id="lidar_ouster_top"
     ):
         """
         Convert a numpy array of shape [n, 3] to a ROS2 PointCloud2 message.
@@ -268,7 +272,33 @@ class WaymoPointcloudHandler(Node):
                     lidar_component, self.lidar_calibration[self.TOP_LIDAR]
                 )
 
-                if load_for_ros:
+                if lidar_frame_seq_idx == 147:
+                    pc_np_array = lidar_points
+
+                    # filter = lambda x: -30 <= x[0] <= -21 and -4 <= x[1] <= 0 and -2 <= x[2] <= 2
+                    filter = lambda x: True
+
+                    indices_1 = [x for x in range(0, pc_np_array.shape[0])
+                                 if filter(pc_np_array[x])]
+                    indices_2 = [x for x in range(0, pc_np_array.shape[0]) if not filter(pc_np_array[x])]
+
+                    pc_np_array_1 = pc_np_array[indices_1]
+                    pc_np_array_2 = pc_np_array[indices_2]
+
+                    o3d_pc = o3d.geometry.PointCloud()
+                    o3d_pc.points = o3d.utility.Vector3dVector(pc_np_array)
+                    o3d_pc.points = o3d.utility.Vector3dVector(pc_np_array_1)
+                    o3d_pc.paint_uniform_color([0.4, 0.4, 0.4])
+
+                    o3d_pc2 = o3d.geometry.PointCloud()
+                    o3d_pc2.points = o3d.utility.Vector3dVector(pc_np_array_2)
+                    o3d_pc2.paint_uniform_color([0.4, 0.4, 0.4])
+
+                    self.top_lidar_pointclouds_o3d[lidar_frame_seq_idx] = o3d_pc2
+                    self.top_lidar_pointclouds_o3d_extra[lidar_frame_seq_idx] = o3d_pc
+
+
+                elif load_for_ros:
                     self.top_lidar_pointclouds_ros2[lidar_frame_seq_idx] = (
                         self.convert_to_ros_pointcloud2(lidar_points)
                     )
@@ -281,15 +311,15 @@ class WaymoPointcloudHandler(Node):
 
                 frame_bboxes = []
                 for j, (
-                    object_id,
-                    x,
-                    y,
-                    z,
-                    dx,
-                    dy,
-                    dz,
-                    heading,
-                    type_id,
+                        object_id,
+                        x,
+                        y,
+                        z,
+                        dx,
+                        dy,
+                        dz,
+                        heading,
+                        type_id,
                 ) in enumerate(
                     zip(
                         lidar_box_component.key.laser_object_id,
@@ -303,6 +333,8 @@ class WaymoPointcloudHandler(Node):
                         lidar_box_component.type,
                     )
                 ):
+                    # if type_id != 1:
+                    #     continue
                     frame_bboxes.append(
                         self.create_bounding_box(
                             [x, y, z],
@@ -337,7 +369,7 @@ class WaymoPointcloudHandler(Node):
         # Set visualisation options
         opt = vis.get_render_option()
         opt.background_color = np.asarray([0, 0, 0])  # Set background to black
-        opt.point_color_option = o3d.visualization.PointColorOption.Color
+        # opt.point_color_option = o3d.visualization.PointColorOption.Color
         opt.point_size = 1.8  # Set initial point size
 
         idx = 0
@@ -361,20 +393,40 @@ class WaymoPointcloudHandler(Node):
     def visualise_lidar_frame(self, selected_lidar_seq_id):
         """Visualise a selected point cloud."""
         # Visualise point cloud with ground truth bounding boxes
-        center = [-28.99, 5.31, 0.97]
-        dims = [5.32, 2.24, 2.37]
-        heading = 0.86
+        center = [-26.85, -1.58, -0.3]
+        dims = [4.71, 2.05, 1.62]
+        heading = -0.14
 
+        # ground truth
         extra_box = self.create_bounding_box(
             center,
             self.heading_to_rotation_matrix(heading),
             dims,
-            [0, 1, 0],
+            [0, 1, 1],
         )
 
+        # prediction
+        extra_box_2 = self.create_bounding_box(
+            [-26.78, -1.56, -0.16],
+            self.heading_to_rotation_matrix(0.22),
+            [4.4, 1.86, 1.46],
+            [1, 0.5, 0],
+        )
+
+        main_pc = self.top_lidar_pointclouds_o3d[selected_lidar_seq_id]
+        extra_pc = self.top_lidar_pointclouds_o3d_extra[
+            selected_lidar_seq_id] if selected_lidar_seq_id in self.top_lidar_pointclouds_o3d_extra else None
+
+        bboxes = self.lidar_bboxes_o3d[selected_lidar_seq_id]
+
+        # bboxes[4].color = [1, 0.5, 0]
+        # bboxes[7].color = [1, 0.5, 0]
+        # bboxes = [extra_box, extra_box_2]
+
         self.visualise_pointcloud_w_bboxes(
-            self.top_lidar_pointclouds_o3d[selected_lidar_seq_id],
-            self.lidar_bboxes_o3d[selected_lidar_seq_id] + [extra_box],
+            main_pc,
+            bboxes,
+            o3d_pc2=extra_pc
         )
 
 
@@ -385,7 +437,7 @@ def main(args=None):
     # ** Change dataset_dir according to host waymo dataset location **
 
     dataset_dir = '/opt/ros_ws/rosbags/waymo/validation'
-    context_name = '1024360143612057520_3580_000_3600_000'
+    context_name = '7163140554846378423_2717_820_2737_820'
 
     # dataset_dir = '/mnt/mydrive/waymo_od/validation'
     # context_name = '10359308928573410754_720_000_740_000'
@@ -402,7 +454,7 @@ def main(args=None):
         dataset_dir, context_name, mode='visualiser'
     )
     # handler.visualise_all_lidar_pointclouds()
-    handler.visualise_lidar_frame(22)
+    handler.visualise_lidar_frame(147)
 
     # Shutdown ROS2
     handler.destroy_node()

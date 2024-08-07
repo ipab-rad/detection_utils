@@ -162,7 +162,7 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
             label_pred_bboxes = [x.bbox for x in label_preds]
             label_gt_bboxes = [x.bbox for x in label_gts]
 
-            # this puts ground truths on the columns and predictions on the rows
+            # this puts predictions on the columns and ground truths on the rows
             ious = calculate_ious_3d(label_pred_bboxes, label_gt_bboxes)
 
             _, matched_prediction_idcs = match_bounding_boxes(ious, threshold)
