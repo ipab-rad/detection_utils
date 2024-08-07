@@ -30,10 +30,12 @@ def results_file_listing():
 
     return results_files
 
-def results_files_groupings():
-    range_groups = {"5m":[0,1,2,3,4], "10m": [5,6,7,8], "20m": [9,10,11,12], "40m":[13,14,15,16]}
 
-    vru_type_groups = {"1_ped":[0,1,5,9,13], "1_ped_bike":[2,6,10,14], "2_ped":[3,7,11,15], "2_ped_same_way":[4,8,12,16]}
+def results_files_groupings():
+    range_groups = {"5m": [0, 1, 2, 3, 4], "10m": [5, 6, 7, 8], "20m": [9, 10, 11, 12], "40m": [13, 14, 15, 16]}
+
+    vru_type_groups = {"1_ped": [0, 1, 5, 9, 13], "1_ped_bike": [2, 6, 10, 14], "2_ped": [3, 7, 11, 15],
+                       "2_ped_same_way": [4, 8, 12, 16]}
 
     return range_groups, vru_type_groups
 
@@ -48,21 +50,31 @@ def append_results(all_results, results_per_class):
 
 
 def analyse():
-    file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/waymo/no_ground"
+    # Waymo
+    # file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/waymo/has_ground"
+
+    # labels_to_use = WAYMO_LABELS
+
+    # files_to_combine = [Path(p).stem for p in glob.glob(f"{file_path}/*")]
+
+    # KB
+    file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb/no_ground"
+
     results_files = results_file_listing()
     range_groups, vru_type_groups = results_files_groupings()
 
     chosen_range_names = []
     chosen_vru_type_names = ["1_ped_bike"]
-    chosen_range_files = [rf for n in chosen_range_names for rf in range_groups[n] ]
-    chosen_vru_type_files = [vtf for n in chosen_vru_type_names for vtf in vru_type_groups[n] ]
+    chosen_range_files = [rf for n in chosen_range_names for rf in range_groups[n]]
+    chosen_vru_type_files = [vtf for n in chosen_vru_type_names for vtf in vru_type_groups[n]]
 
-    labels_to_use = WAYMO_LABELS
+    labels_to_use = ALL_LABELS
 
-    files_to_combine = [Path(p).stem for p in glob.glob(f"{file_path}/*")]
+    files_to_combine = [results_files[x] for x in range(len(results_files)) if x in chosen_range_files
+                        or x in chosen_vru_type_files]
 
-    # files_to_combine = [results_files[x] for x in range(len(results_files)) if x in chosen_range_files
-    #                     or x in chosen_vru_type_files]
+    print(f"Grouping by range {chosen_range_names}")
+    print(f"Grouping by vru type {chosen_vru_type_names}")
 
     print(files_to_combine)
 
@@ -71,9 +83,6 @@ def analyse():
     for file_name in files_to_combine:
         per_class_results = read_json(f"{file_path}/{file_name}.json")
         append_results(all_results, per_class_results)
-
-    print(f"Grouping by range {chosen_range_names}")
-    print(f"Grouping by vru type {chosen_vru_type_names}")
 
     for label in labels_to_use:
         label_results = all_results[label.name]
@@ -91,7 +100,7 @@ def analyse():
         tp = np.array([int(x["true_positive"]) for x in predictions])
         fp = np.ones(tp.shape) - tp
 
-        ap = calculate_ap(tp,fp,gt_count)
+        ap = calculate_ap(tp, fp, gt_count)
 
         print(f"AP={ap} for label {label.name}")
 
