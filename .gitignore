@@ -1,0 +1,5 @@
+__pycache__/
+*.orig
+
+.vscode/
+model_evaluator/model_evaluator/results

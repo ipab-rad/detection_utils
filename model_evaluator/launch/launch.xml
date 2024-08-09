@@ -1,0 +1,3 @@
+<launch>
+  <node name="model_evaluator_node" pkg="model_evaluator" exec="model_evaluator" output="screen"/>
+</launch>
