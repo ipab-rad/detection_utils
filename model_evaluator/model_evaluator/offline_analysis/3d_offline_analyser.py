@@ -4,8 +4,9 @@ from model_evaluator.utils.json_file_reader import read_json
 import numpy as np
 from pathlib import Path
 import glob
+import matplotlib.pyplot as plt
 
-from model_evaluator.utils.metrics_calculator import calculate_ap
+from model_evaluator.utils.metrics_calculator import calculate_ap, calculate_precisions_recalls, interpolate_precisions
 
 def results_file_listing():
     results_files = [
@@ -49,6 +50,26 @@ def append_results(all_results, results_per_class):
         overall_dict_entry["results"] += result_dict_entry["results"]
 
 
+def precision_recall_curve(precisions, recalls):
+    ax = plt.gca()
+    # ax.set_xlim([-0.015, 0.44])
+    # ax.set_ylim([0.585, 1.015])
+
+    # ax.set_xlim([-0.015, 0.2])
+    # ax.set_ylim([0.3, 1.015])
+
+    plt.title("Precision-Recall Curve")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+
+    # plt.title("Precision-Recall Curve (with interpolation)")
+    # plt.xlabel("Recall")
+    # plt.ylabel("Precision (Interpolated)")
+
+    plt.plot(recalls, precisions)
+    plt.show()
+
+
 def analyse():
     # Waymo
     # file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/waymo/has_ground"
@@ -58,13 +79,13 @@ def analyse():
     # files_to_combine = [Path(p).stem for p in glob.glob(f"{file_path}/*")]
 
     # KB
-    file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb/no_ground"
+    file_path = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/results/kb/has_ground"
 
     results_files = results_file_listing()
     range_groups, vru_type_groups = results_files_groupings()
 
     chosen_range_names = []
-    chosen_vru_type_names = ["1_ped_bike"]
+    chosen_vru_type_names = ["1_ped","2_ped","2_ped_same_way","1_ped_bike"]
     chosen_range_files = [rf for n in chosen_range_names for rf in range_groups[n]]
     chosen_vru_type_files = [vtf for n in chosen_vru_type_names for vtf in vru_type_groups[n]]
 
@@ -95,7 +116,7 @@ def analyse():
             print(f"Cannot calculate AP for label {label.name} {gt_count=} {pred_count=}")
             continue
 
-        predictions.sort(key=lambda x: x["score"])
+        predictions.sort(reverse=True, key=lambda x: x["score"])
 
         tp = np.array([int(x["true_positive"]) for x in predictions])
         fp = np.ones(tp.shape) - tp
@@ -103,6 +124,15 @@ def analyse():
         ap = calculate_ap(tp, fp, gt_count)
 
         print(f"AP={ap} for label {label.name}")
+
+        curve_label = "PEDESTRIAN"
+        # curve_label = "VEHICLE"
+
+        if label.name == curve_label:
+            precisions, recalls = calculate_precisions_recalls(tp, fp, gt_count)
+            precisions = interpolate_precisions(precisions)
+            precision_recall_curve(precisions, recalls)
+
 
 
 if __name__ == "__main__":
