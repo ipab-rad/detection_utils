@@ -43,9 +43,9 @@ class KBRosbagReader2D(RosbagDatasetReader2D):
     @staticmethod
     def _parse_occlusion_level(occluded: bool):
         if occluded:
-            return DifficultyLevel.LEVEL_2
+            return DifficultyLevel.HARD
         else:
-            return DifficultyLevel.LEVEL_1
+            return DifficultyLevel.EASY
 
     def _read_keyframes_file(self, file: str):
         with open(file, 'r') as f:

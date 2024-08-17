@@ -78,7 +78,7 @@ class TensorrtYOLOXConnector(InferenceConnector2D):
             self.node.publisher.publish(msg)
 
             try:
-                result = self.node.results_queue.get(timeout=1)
+                result = self.node.results_queue.get(timeout=10)
 
                 all_objects_with_feature: list[DetectedObjectWithFeature] = (
                     result.feature_objects

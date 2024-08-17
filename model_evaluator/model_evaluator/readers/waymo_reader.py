@@ -90,9 +90,9 @@ class WaymoDatasetReader2D(WaymoDatasetReaderBase, DatasetReader2D):
         
         match DifficultyLevelType(difficulty_level):
             case DifficultyLevelType.LEVEL_1:
-                return DifficultyLevel.LEVEL_1
+                return DifficultyLevel.EASY
             case DifficultyLevelType.LEVEL_2:
-                return DifficultyLevel.LEVEL_3
+                return DifficultyLevel.HARD
             case _:
                 return DifficultyLevel.UNKNOWN
 

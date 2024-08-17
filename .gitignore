@@ -2,3 +2,11 @@ __pycache__/
 *.orig
 
 .vscode/
+
+waymo_videos/
+kings_buildings_videos/
+kings_buildings_videos_raw/
+kings_buildings_videos_new/
+kings_buildings_videos_ideal/
+kings_buildings_annotations/
+results/**

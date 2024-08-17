@@ -1,9 +1,13 @@
+import json
+import os
+from typing import Optional
 import cv2 as cv
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from model_evaluator.utils.video_writer import VideoWriter
 from model_evaluator.connectors.yolox_connector import TensorrtYOLOXConnector
 from model_evaluator.interfaces.detection2D import Detection2D
 from model_evaluator.readers.waymo_reader import (
@@ -14,116 +18,69 @@ from model_evaluator.interfaces.labels import Label
 from model_evaluator.utils.cv2_bbox_annotator import (
     draw_frame_number,
     draw_bboxes,
-    create_video_writer,
-    draw_metrics,
 )
-from model_evaluator.utils.metrics import KBMetrics, Metrics, log_average_miss_rate
-from model_evaluator.utils.metrics_calculator import (
-    calculate_ap,
-    calculate_ious,
-    calculate_tps_fps,
-    calculate_mr,
-)
+from model_evaluator.utils.metrics import KBMetricsCalculator, MetricsCalculator
+
 from model_evaluator.utils.kb_rosbag_matcher import (
     match_rosbags_in_path,
 )
 
 
+def save(file, data):
+    with open(file, 'w') as f:
+        json.dump(data, f)
+
+def load(file):
+    with open(file, 'r') as f:
+        return json.load(f)
+
+
+def save_pickle(file, data):
+    with open(file, 'wb') as f:
+        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+
+def load_pickle(file):
+    with open(file, 'rb') as f:
+        return pickle.load(f)
+
+
+
 def inference_2d(
     data_generator,
     connector,
-    thresholds=[0.5],
+    metrics_calculator,
     video_file: str = None,
     video_size=(960, 640),
     video_fps=10,
-    video_annotations=[Label.VRU],
+    video_annotations: set[Label] = set([Label.PEDESTRIAN, Label.BICYCLE]),
 ):
     if video_file is not None:
-        video_writer = create_video_writer(video_file, video_size, video_fps)
+        video_writer = VideoWriter(video_file, video_size, video_fps)
 
-    all_detections = []
-    all_gts = []
-
-    metrics = Metrics(0.5)
-
-    for frame_counter, (image, gts) in enumerate(data_generator):
+    for frame_counter, (image, ground_truths) in enumerate(data_generator):
         detections = connector.run_inference(image)
 
         if detections is None:
-            # TODO: Handle accordingly
-            print(f'Inference failed for frame {frame_counter}')
-            continue
+            raise RuntimeError(f'Inference failed for frame {frame_counter}')
 
-        metrics.add_frame(detections, gts)
-
-        all_detections.append(detections)
-        all_gts.append(gts)
-
-        aps_per_label = np.empty((len(video_annotations), len(thresholds)))
-        tps_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
-        fps_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
-        mrs_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
-
-        num_gts_per_label = np.empty(len(video_annotations), dtype=np.uint)
-
-        for i, label in enumerate(video_annotations):
-            label_gts = [gt for gt in gts if gt.label in label]
-            label_detections = [
-                detection for detection in detections if detection.label in label
-            ]
-            num_label_gts = len(label_gts)
-
-            num_gts_per_label[i] = num_label_gts
-
-            ious = calculate_ious(label_detections, label_gts)
-
-            for j, threshold in enumerate(thresholds):
-                tps, fps = calculate_tps_fps(ious, threshold)
-
-                ap = calculate_ap(tps, fps, num_label_gts)
-                mr = calculate_mr(tps, num_label_gts)
-
-                aps_per_label[i, j] = ap
-                tps_per_label[i, j] = tps.sum()
-                fps_per_label[i, j] = fps.sum()
-                mrs_per_label[i, j] = mr
-                
-                tps_detections = [detection for i, detection in enumerate(label_detections) if tps[i] == 1]
-                fps_detections = [detection for i, detection in enumerate(label_detections) if fps[i] == 1]
-
-                draw_bboxes(image, label_gts, tps_detections, fps_detections)
-
-        mean_aps = np.nanmean(aps_per_label, axis=0)
+        metrics_calculator.add_frame(detections, ground_truths)
 
         if video_writer:
-            threshold = thresholds[0]
-            mean_ap = mean_aps[0]
-
             draw_frame_number(image, frame_counter)
-            draw_metrics(image, threshold, mean_ap, video_annotations, num_gts_per_label, tps_per_label[:, 0], fps_per_label[:, 0], mrs_per_label[:, 0], aps_per_label[:, 0])
+
+            draw_bboxes(image, [ground_truth for ground_truth in ground_truths if ground_truth.label in video_annotations], colour=(0, 255, 0))
+            draw_bboxes(image, [detection for detection in detections if detection.label in video_annotations], colour=(0, 0, 255))
 
             image = cv.resize(image, video_size)
-            video_writer.write(image)
+            video_writer.write_frame(image)
 
     video_writer.release()
 
-    print(f'metrics: {metrics.log_average_miss_rate()} {metrics.mean_average_precision(0.5)}')
-
-    return all_detections, all_gts, mean_aps
-
-def rosbags_run(connector):
-    rosbags = match_rosbags_in_path(
-        '/opt/ros_ws/rosbags/kings_buildings_data/kings_building_2024_08_02'
-    )
-
-    rosbags.sort(key=lambda x: x.metadata.timestamp)
-
-    distances = list(set([rosbag.metadata.distance for rosbag in rosbags if rosbag.metadata.distance is not None]))
-    distances.sort()
-
+def rosbags_evaluation(connector, rosbags, labels, distances, video_directory):
+    labels_map = dict([(label, i) for i, label in enumerate(labels)])
     distances_map = dict([(distance, i) for i, distance in enumerate(distances)])
 
-    incorrect = np.zeros((len(distances), 3), dtype=np.float32)
+    errors = np.zeros((len(distances), len(labels), 3), dtype=np.float32)
     counts = np.zeros(len(distances), dtype=np.int32)
 
     for rosbag in rosbags:
@@ -134,39 +91,79 @@ def rosbags_run(connector):
         if not reader.has_expectations:
             continue
 
-
-        video_writer = create_video_writer(f'/opt/ros_ws/src/deps/external/detection_utils/kings_buildings_videos/{rosbag.metadata.name}', (2272, 1088), 20)
-
-        metrics = KBMetrics(0.0)
+        video_writer = VideoWriter(os.path.join(video_directory, os.path.basename(rosbag.path)), (2272, 1088), 20)
+        metrics = KBMetricsCalculator(labels)
 
         for frame, (image, expectations) in enumerate(reader.read_data()):
             detections = connector.run_inference(image)
 
+            if detections is None:
+                raise RuntimeError(f'Inference failed for frame {frame}')
+
             metrics.add_frame(detections, expectations)
 
             draw_frame_number(image, frame)
+            draw_bboxes(image, [detection for detection in detections if detection.label in Label.VRU])
 
-            draw_bboxes(image, [], [], detections)
-
-            video_writer.write(image)
+            video_writer.write_frame(image)
 
         video_writer.release()
 
-        accuracy = metrics.accuracy()
+        error_dict = metrics.error()
 
         distance_index = distances_map.get(rosbag.metadata.distance)
-
         if distance_index is not None:
             counts[distance_index] += 1
 
-            incorrect[distance_index, :] = accuracy
+            for label in error_dict:
+                label_index = labels_map[label]
 
-    errors = incorrect / counts.reshape((-1, 1))
+                errors[distance_index, label_index, :] += error_dict[label]
 
-    sns.heatmap(errors, annot=True, cbar=True, xticklabels=['No pedestrian', 'No/little occlusion', 'Much occlusion'], yticklabels=distances)
-    plt.savefig('heatmap.png')
+    errors = errors / counts.reshape((-1, 1, 1))
 
-def waymo_run(connector):
+    return errors
+
+def rosbags_run(connector, base_path):
+    labels = [Label.PEDESTRIAN, Label.BICYCLE, Label.VRU]
+
+    rosbags = match_rosbags_in_path(
+        '/opt/ros_ws/rosbags/kings_buildings_data/kings_building_2024_08_02'
+    )
+
+    rosbags.sort(key=lambda x: x.metadata.timestamp)
+
+    distances = list(set([rosbag.metadata.distance for rosbag in rosbags if rosbag.metadata.distance is not None]))
+    distances.sort()
+
+    ideal_rosbags = [rosbag for rosbag in rosbags if rosbag.metadata.is_ideal]
+    rosbags = [rosbag for rosbag in rosbags if not rosbag.metadata.is_ideal]
+
+    errors = rosbags_evaluation(connector, rosbags, labels, distances, os.path.join(base_path, 'normal'))
+    errors_ideal = rosbags_evaluation(connector, ideal_rosbags, labels, distances, os.path.join(base_path, 'ideal'))
+
+    errors_ideal = errors_ideal[:, :, 1]
+
+    save(os.path.join(base_path, 'normal.json'), errors)
+    save(os.path.join(base_path, 'ideal.json'), errors_ideal)
+
+def rosbag_plots(base_path):
+    errors = load(os.path.join(base_path, 'normal.json'))
+    errors_ideal = load(os.path.join(base_path, 'ideal.json'))
+
+    distances_ideal = ['5m', '10m', '20m', '50m', '100m']
+    distances = ['5m', '10m', '20m', '50m']
+
+    sns.heatmap(errors[:, 2, :], annot=True, cbar=True, xticklabels=['No VRU', 'Little occlusion', 'Much occlusion'], yticklabels=distances)
+    plt.savefig(os.path.join(base_path, 'normal.png'))
+
+    plt.close()
+
+    sns.heatmap(errors_ideal[:, 2].reshape((-1, 1)), annot=True, cbar=True, xticklabels=['No occlusion'], yticklabels=distances_ideal)
+    plt.savefig(os.path.join(base_path, 'ideal.png'))
+
+
+def waymo_run(connector, base_path):
     waymo_contexts_dict = parse_context_names_and_timestamps(
         '/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/2d_pvps_validation_frames.txt'
     )
@@ -174,9 +171,11 @@ def waymo_run(connector):
     waymo_labels = [
         #Label.UNKNOWN,
         Label.PEDESTRIAN,
-        #Label.BICYCLE,
+        Label.BICYCLE,
         #Label.VEHICLE,
     ]
+
+    metrics = {}
 
     for context_name in waymo_contexts_dict:
         print(context_name)
@@ -188,29 +187,123 @@ def waymo_run(connector):
             [1],
         )
 
-        all_detections, all_gts, _ = inference_2d(
+        metrics_calculator = MetricsCalculator([Label.PEDESTRIAN, Label.BICYCLE])
+        
+        inference_2d(
             waymo_reader.read_data(),
             connector,
-            [0.5],
-            f'/opt/ros_ws/src/deps/external/detection_utils/waymo_videos/{context_name}',
+            metrics_calculator,
+            video_file=os.path.join(base_path, context_name),
             video_size=(1920, 1280),
-            video_annotations=waymo_labels,
             video_fps=5
         )
 
-        all_detections_gts = [(detections, gts) for detections, gts in zip(all_detections, all_gts)]
+        metrics[context_name] = metrics_calculator
 
-        print(log_average_miss_rate(all_detections_gts))
+    save_pickle(os.path.join(base_path, 'metrics.pickle'), metrics)
 
-        with open(f'/opt/ros_ws/src/deps/external/detection_utils/waymo_videos/{context_name}.pickle', 'wb') as f:
-            pickle.dump(all_detections, f, protocol=pickle.HIGHEST_PROTOCOL)
+def waymo_results_lamr(base_path):
+    metrics = load_pickle(os.path.join(base_path, 'metrics.pickle'))
+
+    lamrs = []
+    lamrs_dict = {
+        Label.PEDESTRIAN: [],
+        Label.BICYCLE: []
+    }
+
+
+    for context in metrics:
+        print(context)
+
+        log_average_miss_rate, log_average_miss_rate_dict = metrics[context].log_average_miss_rate(os.path.join(base_path, f'{context}.png'))
+
+        lamrs.append(log_average_miss_rate)
+
+        print(f'LAMR={log_average_miss_rate:.4f}')
+
+        for label in log_average_miss_rate_dict:
+            print(f'{label.name:10}: LAMR={log_average_miss_rate_dict[label]:.4f}')
+
+            lamrs_dict[label].append(log_average_miss_rate_dict[label])
+
+    print()
+    print(f'Overall LAMR: {np.nanmean(lamrs):.4f}')
+    for label in lamrs_dict:
+            print(f'{label.name:10}: LAMR={np.nanmean(lamrs_dict[label]):.4f}')
+
+def waymo_results_map(base_path):
+    metrics = load_pickle(os.path.join(base_path, 'metrics.pickle'))
+
+    for context in metrics:
+        print(context)
+
+        mean_average_precision, average_precision_dict = metrics[context].mean_average_precision(0.5)
+
+        print(f'mAP={mean_average_precision:.3f}')
+
+        for label in average_precision_dict:
+            print(f'{label.name:10}: AP={average_precision_dict[label]:.3f}')
 
 def camera_run():
+    # rosbags = match_rosbags_in_path(
+    #     '/opt/ros_ws/rosbags/kings_buildings_data/kings_building_2024_08_02'
+    # )
+
+    # for rosbag in rosbags:
+    #     print(rosbag.metadata.name)
+
+    #     video_file = os.path.join('/opt/ros_ws/src/deps/external/detection_utils/kings_buildings_videos_new/', rosbag.metadata.name)
+
+    #     reader = rosbag.get_reader_2d()
+
+    #     with VideoWriter(video_file, (2272, 1088), 20) as video_writer:
+    #         for frame, (image, _) in enumerate(reader.read_data()):
+    #             draw_frame_number(image, frame)
+
+    #             video_writer.write_frame(image)
+
+
     connector = TensorrtYOLOXConnector(
         '/sensor/camera/fsp_l/image_rect_color',
         '/perception/object_recognition/detection/rois0',
     )
 
-    rosbags_run(connector)
+    # rosbags_run(connector, '/opt/ros_ws/src/deps/external/detection_utils/results/rosbags_tiny')
 
-    # waymo_run(connector)
+    waymo_run(connector, '/opt/ros_ws/src/deps/external/detection_utils/results/waymo_lamr_test')
+
+    # waymo_results_map('/opt/ros_ws/src/deps/external/detection_utils/results/waymo_map')
+    # waymo_results_lamr('/opt/ros_ws/src/deps/external/detection_utils/results/waymo_lamr')
+
+    # data = load_pickle('/opt/ros_ws/src/deps/external/detection_utils/results/waymo_lamr/metrics.pickle')
+
+    # # # x = data['5372281728627437618_2005_000_2025_000']
+    # x = data['1024360143612057520_3580_000_3600_000']
+
+    # m = MetricsCalculator([Label.PEDESTRIAN])
+
+    # detections, gts, _ = x.frames[0]
+
+    # m.add_frame(detections, gts)
+
+    # detections, gts, _ = x.frames[1]
+
+    # m.add_frame(detections, gts)
+
+    # print(m.log_average_miss_rate('test.png'))
+
+    # score_detections_idxs = MetricsCalculator.filter_score(detections, 0.0)
+    # score_detections = [detections[i] for i in score_detections_idxs]
+
+    # ped_detections_idxs = MetricsCalculator.filter_label(score_detections, Label.PEDESTRIAN)
+    # ped_gts_idxs = MetricsCalculator.filter_label(gts, Label.PEDESTRIAN)
+
+    # ped_detections = [score_detections[i] for i in ped_detections_idxs]
+    # ped_gts = [gts[i] for i in ped_gts_idxs]
+
+    # ious = MetricsCalculator.calculate_ious(ped_detections, ped_gts)
+
+    # matches = MetricsCalculator.correct_matches(ious, 0.5)
+
+    # print(f'{np.sum(matches)} / {len(ped_gts)}  -  {len(ped_detections) - np.sum(matches)}')
+    # print([detection for i, detection in enumerate(ped_detections) if matches[i]])

@@ -76,11 +76,11 @@ class BBox2D:
 
 
 class DifficultyLevel(Enum):
-    """Difficulty level for detecting object. Higher level is harder"""
+    """Difficulty level for detecting object"""
 
     UNKNOWN = auto()
-    LEVEL_1 = auto()
-    LEVEL_2 = auto()
+    EASY = auto()
+    HARD = auto()
 
 
 class Detection2D:

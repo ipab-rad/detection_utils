@@ -14,6 +14,7 @@ class KBRosbagMetaData:
     count: int
     vru_type: str
     take: int
+    is_ideal: bool
 
     def __init__(
         self,
@@ -23,6 +24,7 @@ class KBRosbagMetaData:
         count: int,
         vru_type: str,
         take: int,
+        is_ideal: bool
     ):
         self.timestamp = timestamp
         self.name = name
@@ -30,6 +32,7 @@ class KBRosbagMetaData:
         self.count = count
         self.vru_type = vru_type
         self.take = take
+        self.is_ideal = is_ideal
 
     def __str__(self):
         line1 = f"{self.timestamp.isoformat()}"
@@ -47,7 +50,7 @@ class KBRosbag:
     metadata: KBRosbagMetaData
 
     def __init__(self, path:str):
-        self.path = path
+        self.path = os.path.normpath(path)
         self.metadata = self._parse_metadata(path)
 
     def get_reader_2d(self) -> KBRosbagReader2D:
@@ -94,7 +97,9 @@ class KBRosbag:
         vru_type = name_match.group('type')
         take = int(name_match.group('take'))
 
-        return KBRosbagMetaData(timestamp, name, distance, count, vru_type, take)
+        is_ideal = name.find('ideal') != -1
+
+        return KBRosbagMetaData(timestamp, name, distance, count, vru_type, take, is_ideal)
 
 
 def match_rosbags_in_path(path: str) -> list[KBRosbag]:
