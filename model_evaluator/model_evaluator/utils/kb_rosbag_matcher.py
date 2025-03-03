@@ -2,8 +2,12 @@ import re
 import glob
 from datetime import datetime
 
-from model_evaluator.readers.rosbag_reader import RosbagDatasetReader2D, RosbagDatasetReader3D
+from model_evaluator.readers.rosbag_reader import (
+    RosbagDatasetReader2D,
+    RosbagDatasetReader3D,
+)
 from model_evaluator.interfaces.labels import Label
+
 
 class KBRosbagMetaData:
     timestamp: datetime
@@ -36,6 +40,7 @@ class KBRosbagMetaData:
     def __repr__(self):
         return self.__str__()
 
+
 class KBRosbag:
     IMAGE_TOPIC = '/sensor/camera/fsp_l/image_rect_color'
     LIDAR_TOPIC = '/sensor/lidar/top/points'
@@ -43,7 +48,7 @@ class KBRosbag:
     metadata: KBRosbagMetaData
     bbox_file_name: str
 
-    def __init__(self, path:str):
+    def __init__(self, path: str):
         self.path = path
         self.metadata = self.parse_metadata()
 
@@ -61,7 +66,9 @@ class KBRosbag:
         return RosbagDatasetReader2D(self.path, self.IMAGE_TOPIC)
 
     def get_reader_3d(self) -> RosbagDatasetReader3D:
-        return RosbagDatasetReader3D(self.path, self.LIDAR_TOPIC, self.bbox_file_name)
+        return RosbagDatasetReader3D(
+            self.path, self.LIDAR_TOPIC, self.bbox_file_name
+        )
 
     def parse_metadata(self):
         pattern = re.compile(

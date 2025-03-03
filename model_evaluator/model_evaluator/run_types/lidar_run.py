@@ -1,9 +1,18 @@
 from model_evaluator.connectors.lidar_connector import LiDARConnector
 from model_evaluator.interfaces.detection3D import Detection3D
-from model_evaluator.interfaces.labels import Label, ALL_LABELS, WAYMO_LABELS, labels_match
+from model_evaluator.interfaces.labels import (
+    Label,
+    ALL_LABELS,
+    WAYMO_LABELS,
+    labels_match,
+)
 from model_evaluator.readers.waymo_reader import WaymoDatasetReader3D
 from model_evaluator.utils.json_file_reader import write_json
-from model_evaluator.utils.kb_rosbag_matcher import match_rosbags_in_path, KBRosbag, KBRosbagMetaData
+from model_evaluator.utils.kb_rosbag_matcher import (
+    match_rosbags_in_path,
+    KBRosbag,
+    KBRosbagMetaData,
+)
 from model_evaluator.utils.metrics_calculator import calculate_ious_3d
 
 from scipy.optimize import linear_sum_assignment
@@ -11,17 +20,22 @@ import glob
 from pathlib import Path
 
 
-def process_rosbags_3D(connector:LiDARConnector):
+def process_rosbags_3D(connector: LiDARConnector):
     # anything without an IoU threshold does not have any ground truths
     # 0.4 used for pedestrian due to GT annotation strategy
-    iou_thresholds = {Label.PEDESTRIAN: 0.4, Label.CAR: 0.5, Label.TRUCK:0.5}
+    iou_thresholds = {Label.PEDESTRIAN: 0.4, Label.CAR: 0.5, Label.TRUCK: 0.5}
 
     rosbags = match_rosbags_in_path('/opt/ros_ws/rosbags/kings_buildings_data')
 
     for r in rosbags:
         process_single_rosbag_3D(connector, r, iou_thresholds)
 
-def process_single_rosbag_3D(connector:LiDARConnector, rosbag:KBRosbag, iou_thresholds: dict[Label, float]):
+
+def process_single_rosbag_3D(
+    connector: LiDARConnector,
+    rosbag: KBRosbag,
+    iou_thresholds: dict[Label, float],
+):
     print(rosbag.metadata)
 
     rosbag_reader = rosbag.get_reader_3d()
@@ -35,7 +49,9 @@ def process_single_rosbag_3D(connector:LiDARConnector, rosbag:KBRosbag, iou_thre
     start_frame = rosbag_reader.start_frame
     end_frame = rosbag_reader.end_frame
 
-    all_results = {label.name: {"gt_count":0, "results":[]} for label in ALL_LABELS}
+    all_results = {
+        label.name: {"gt_count": 0, "results": []} for label in ALL_LABELS
+    }
 
     for frame_counter, (point_cloud, gt_dets) in enumerate(rosbag_data):
         if frame_counter < start_frame or frame_counter > end_frame:
@@ -43,12 +59,16 @@ def process_single_rosbag_3D(connector:LiDARConnector, rosbag:KBRosbag, iou_thre
 
         detections = connector.run_inference(point_cloud)
 
-        detections_in_experiment_area = filter_detections_kb(detections, rosbag.metadata)
+        detections_in_experiment_area = filter_detections_kb(
+            detections, rosbag.metadata
+        )
 
         results_per_class = process_frame_detections(
             detections_in_experiment_area,
-            gt_dets, iou_thresholds, frame_counter,
-            ALL_LABELS
+            gt_dets,
+            iou_thresholds,
+            frame_counter,
+            ALL_LABELS,
         )
 
         for result_label in results_per_class:
@@ -63,45 +83,71 @@ def process_single_rosbag_3D(connector:LiDARConnector, rosbag:KBRosbag, iou_thre
     write_json(f"{results_dir}/{rosbag.bbox_file_name}.json", all_results)
 
 
-def filter_detections_kb(detections: list[Detection3D], metadata:KBRosbagMetaData):
+def filter_detections_kb(
+    detections: list[Detection3D], metadata: KBRosbagMetaData
+):
     # 5m 1 ped path filter (other pedestrians in scene)
-    is_five_m_1_ped = metadata.distance == "5m" and metadata.vru_type == "ped" and metadata.count == 1
+    is_five_m_1_ped = (
+        metadata.distance == "5m"
+        and metadata.vru_type == "ped"
+        and metadata.count == 1
+    )
 
     if is_five_m_1_ped:
-        detections = [det for det in detections
-                      if not (25 < det.bbox.center_x and -6 < det.bbox.center_y <-3
-                      )]
+        detections = [
+            det
+            for det in detections
+            if not (25 < det.bbox.center_x and -6 < det.bbox.center_y < -3)
+        ]
 
     # filter detections to only the experiment area
     # x between 2 and 50
     # y between -8 and 7
-    return [det for det in detections
-            if 2 < det.bbox.center_x < 50
-            and -8 < det.bbox.center_y < 7
-            ]
+    return [
+        det
+        for det in detections
+        if 2 < det.bbox.center_x < 50 and -8 < det.bbox.center_y < 7
+    ]
 
 
-def process_waymo_3D(connector:LiDARConnector):
+def process_waymo_3D(connector: LiDARConnector):
     # anything without an IoU threshold does not have any ground truths
-    iou_thresholds = {Label.PEDESTRIAN: 0.5, Label.VEHICLE: 0.7, Label.BICYCLE: 0.5, Label.UNKNOWN: 0.5}
+    iou_thresholds = {
+        Label.PEDESTRIAN: 0.5,
+        Label.VEHICLE: 0.7,
+        Label.BICYCLE: 0.5,
+        Label.UNKNOWN: 0.5,
+    }
 
-    waymo_scenes = [s for s in [Path(p).stem for p in glob.glob("/opt/ros_ws/rosbags/waymo/validation/lidar/*")] if s != "_metadata"]
+    waymo_scenes = [
+        s
+        for s in [
+            Path(p).stem
+            for p in glob.glob("/opt/ros_ws/rosbags/waymo/validation/lidar/*")
+        ]
+        if s != "_metadata"
+    ]
 
     for ws in waymo_scenes:
         process_single_waymo_scene_3D(connector, ws, iou_thresholds)
 
 
-def process_single_waymo_scene_3D(connector:LiDARConnector, waymo_scene:str, iou_thresholds: dict[Label, float]):
+def process_single_waymo_scene_3D(
+    connector: LiDARConnector,
+    waymo_scene: str,
+    iou_thresholds: dict[Label, float],
+):
     print(f"{waymo_scene}")
 
     waymo_reader = WaymoDatasetReader3D(
-        "/opt/ros_ws/rosbags/waymo/validation",
-        waymo_scene
+        "/opt/ros_ws/rosbags/waymo/validation", waymo_scene
     )
 
     waymo_data = waymo_reader.read_data()
 
-    all_results = {label.name: {"gt_count": 0, "results": []} for label in WAYMO_LABELS}
+    all_results = {
+        label.name: {"gt_count": 0, "results": []} for label in WAYMO_LABELS
+    }
 
     for frame_counter, (point_cloud, gt_dets) in enumerate(waymo_data):
         detections = connector.run_inference(point_cloud)
@@ -122,16 +168,21 @@ def process_single_waymo_scene_3D(connector:LiDARConnector, waymo_scene:str, iou
     write_json(f"{results_dir}/{waymo_scene}.json", all_results)
 
 
-def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3D], iou_thresholds: dict[Label, float], frame:int, label_list: list[Label])\
-        -> dict[Label, dict]:
+def process_frame_detections(
+    predictions: list[Detection3D],
+    gts: list[Detection3D],
+    iou_thresholds: dict[Label, float],
+    frame: int,
+    label_list: list[Label],
+) -> dict[Label, dict]:
     # TODO implement below filtering for rosbag analysis
     # for pedestrians, log true and false positives
     # for everything else, only log false positives
     detection_results_per_class = {}
 
     for label in label_list:
-        label_preds = [x for x in predictions if labels_match(x.label,label)]
-        label_gts = [x for x in gts if labels_match(x.label,label)]
+        label_preds = [x for x in predictions if labels_match(x.label, label)]
+        label_gts = [x for x in gts if labels_match(x.label, label)]
 
         no_preds = len(label_preds) == 0
         no_gts = len(label_gts) == 0
@@ -143,12 +194,12 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
         if no_preds:
             # no predictions for class but there are gts
             detection_results_per_class[label] = {
-                "gt_count":len(label_gts),
-                "results":[]
+                "gt_count": len(label_gts),
+                "results": [],
             }
             continue
 
-        matched_prediction_idcs:list[int]
+        matched_prediction_idcs: list[int]
 
         if no_gts:
             # predictions but no gts
@@ -169,24 +220,26 @@ def process_frame_detections(predictions:list[Detection3D], gts: list[Detection3
 
         detection_results = [
             {
-                "score" : p.score,
+                "score": p.score,
                 "true_positive": p_idx in matched_prediction_idcs,
                 "frame": frame,
-                "bbox": p.bbox.abbrv_str()
+                "bbox": p.bbox.abbrv_str(),
             }
             for p_idx, p in enumerate(label_preds)
         ]
 
         detection_results_per_class[label] = {
-            "gt_count":len(label_gts),
-            "results":detection_results
+            "gt_count": len(label_gts),
+            "results": detection_results,
         }
 
     return detection_results_per_class
 
 
 def match_bounding_boxes(ious, iou_threshold):
-    row_indices, col_indices = linear_sum_assignment(-ious)  # maximizing IoU -> minimize -IoU
+    row_indices, col_indices = linear_sum_assignment(
+        -ious
+    )  # maximizing IoU -> minimize -IoU
 
     filtered_row_indices = []
     filtered_col_indices = []
@@ -197,6 +250,7 @@ def match_bounding_boxes(ious, iou_threshold):
             filtered_col_indices.append(col_indices[i])
 
     return filtered_row_indices, filtered_col_indices
+
 
 def lidar_run():
     connector = LiDARConnector(

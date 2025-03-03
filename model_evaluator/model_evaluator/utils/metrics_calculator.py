@@ -9,7 +9,7 @@ from pytorch3d.ops import box3d_overlap
 
 
 def calculate_ious_2d(
-        pred_bboxes: list[BBox2D], gt_bboxes: list[BBox2D]
+    pred_bboxes: list[BBox2D], gt_bboxes: list[BBox2D]
 ) -> np.ndarray:
     ious = np.empty((len(pred_bboxes), len(gt_bboxes)))
 
@@ -21,15 +21,19 @@ def calculate_ious_2d(
 
 
 def calculate_ious_3d(
-        pred_bboxes: list[BBox3D], gt_bboxes: list[BBox3D]
+    pred_bboxes: list[BBox3D], gt_bboxes: list[BBox3D]
 ) -> np.ndarray:
-    prediction_corners = torch.stack([bbox.corners for bbox in pred_bboxes], dim=0)
-    ground_truth_corners = torch.stack([bbox.corners for bbox in gt_bboxes], dim=0)
+    prediction_corners = torch.stack(
+        [bbox.corners for bbox in pred_bboxes], dim=0
+    )
+    ground_truth_corners = torch.stack(
+        [bbox.corners for bbox in gt_bboxes], dim=0
+    )
     return box3d_overlap(ground_truth_corners, prediction_corners)[1]
 
 
 def get_tp_fp_from_ious(
-        ious: np.ndarray, threshold: float
+    ious: np.ndarray, threshold: float
 ) -> tuple[np.ndarray, np.ndarray]:
     num_detections = ious.shape[0]
     num_gts = ious.shape[1]
@@ -63,7 +67,7 @@ def get_tp_fp_from_ious(
 
 
 def get_unmatched_tp_fp_from_ious(
-        ious: np.ndarray, threshold: float
+    ious: np.ndarray, threshold: float
 ) -> tuple[np.ndarray, np.ndarray]:
     num_detections = ious.shape[0]
     num_gts = ious.shape[1]
@@ -89,7 +93,7 @@ def get_unmatched_tp_fp_from_ious(
 
 
 def calculate_ious_from_dets_gts(
-        detections: list[Detection2D], gts: list[Detection2D]
+    detections: list[Detection2D], gts: list[Detection2D]
 ) -> np.ndarray:
     detections = detections.copy()
     detections.sort(key=lambda x: x.score, reverse=True)
@@ -103,7 +107,7 @@ def calculate_ious_from_dets_gts(
 
 
 def calculate_ious_per_label_from_dets_gts(
-        detections: list[Detection2D], gts: list[Detection2D], labels: set[Label]
+    detections: list[Detection2D], gts: list[Detection2D], labels: set[Label]
 ) -> dict[Label, np.ndarray]:
     ious_dict = {}
 
@@ -121,7 +125,7 @@ def calculate_ious_per_label_from_dets_gts(
 
 
 def calculate_tps_fps_per_label(
-        ious_per_label: dict[Label, np.ndarray], threshold: float
+    ious_per_label: dict[Label, np.ndarray], threshold: float
 ) -> dict[Label, tuple[np.ndarray, np.ndarray]]:
     tps_fps_per_label = {}
 
@@ -138,7 +142,7 @@ def calculate_fppi(fps: np.ndarray) -> int:
 
 
 def calculate_fppi_per_label(
-        tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]]
+    tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]],
 ) -> int:
     fps = 0
 
@@ -150,7 +154,9 @@ def calculate_fppi_per_label(
     return fps
 
 
-def calculate_precisions_recalls(tps: np.ndarray, fps: np.ndarray, num_gts: int) -> tuple[np.ndarray, np.ndarray]:
+def calculate_precisions_recalls(
+    tps: np.ndarray, fps: np.ndarray, num_gts: int
+) -> tuple[np.ndarray, np.ndarray]:
     tps_cumsum = np.cumsum(tps)
     fps_cumsum = np.cumsum(fps)
 
@@ -190,8 +196,8 @@ def calculate_ap(tps: np.ndarray, fps: np.ndarray, num_gts: int) -> float:
 
 
 def calculate_mean_ap(
-        tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]],
-        num_gts: int,
+    tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]],
+    num_gts: int,
 ) -> float:
     aps = []
 
@@ -208,8 +214,8 @@ def calculate_mr(tps: np.ndarray, num_gts: int) -> int:
 
 
 def calculate_mr_per_label(
-        tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]],
-        num_gts: int,
+    tps_fps_per_label: dict[Label, tuple[np.ndarray, np.ndarray]],
+    num_gts: int,
 ) -> int:
     tps = 0
 
@@ -222,7 +228,7 @@ def calculate_mr_per_label(
 
 
 def compare_expectations(
-        detections: list[Detection2D], expectations: dict[Label, int]
+    detections: list[Detection2D], expectations: dict[Label, int]
 ):
     for label in expectations:
         label_detections = [

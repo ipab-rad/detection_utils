@@ -38,8 +38,7 @@ class RosbagReader:
 
         self.read_bag_into_reader()
 
-
-    def read_rosbag_metadata(self, print_info:bool):
+    def read_rosbag_metadata(self, print_info: bool):
         # Read rosbag metadata
         info = rosbag2_py.Info()
         metadata = info.read_metadata(self.path, 'mcap')
@@ -51,17 +50,21 @@ class RosbagReader:
             )
 
         # Check wanted topics exist in rosbag and types match
-        matching_topics = [topic_info for topic_info in metadata.topics_with_message_count
-                           if topic_info.topic_metadata.name in self.topics_with_types.keys()]
+        matching_topics = [
+            topic_info
+            for topic_info in metadata.topics_with_message_count
+            if topic_info.topic_metadata.name in self.topics_with_types.keys()
+        ]
 
         for topic_info in matching_topics:
             self.check_ros_topic_type(topic_info, metadata, print_info)
 
-
-    def check_ros_topic_type(self,topic_info, metadata, print_info):
+    def check_ros_topic_type(self, topic_info, metadata, print_info):
         try:
             topic_type = get_message(topic_info.topic_metadata.type)
-            expected_type = self.topics_with_types[topic_info.topic_metadata.name]
+            expected_type = self.topics_with_types[
+                topic_info.topic_metadata.name
+            ]
 
             if topic_type != expected_type:
                 error_msg = f"Topic '{topic_info.topic_metadata.name}' has different type '{topic_type}' ('{topic_info.topic_metadata.type}')"
@@ -89,7 +92,9 @@ class RosbagReader:
 
         # Set filter for wanted topics only
         self.reader.set_filter(
-            rosbag2_py.StorageFilter(topics=list(self.topics_with_types.keys()))
+            rosbag2_py.StorageFilter(
+                topics=list(self.topics_with_types.keys())
+            )
         )
 
     def __iter__(self) -> Generator[tuple[str, bytes, time], None, None]:
@@ -128,22 +133,26 @@ class RosbagDatasetReader2D(DatasetReader2D):
 class RosbagDatasetReader3D(DatasetReader3D):
     start_frame: int
     end_frame: int
-    gt_detections_by_frame: dict[int,list[Detection3D]]
+    gt_detections_by_frame: dict[int, list[Detection3D]]
 
     gt_ped_bbox_dims = [0.5, 0.7, 1.9]  # fixed size for ease
     gt_ped_bbox_heading = 0  # axis aligned for ease
 
-    annotations_present:bool
+    annotations_present: bool
 
-    def __init__(self, path: str, pointcloud_topic: str, bbox_file_name:str):
+    def __init__(self, path: str, pointcloud_topic: str, bbox_file_name: str):
         self.path = path
         self.pointcloud_topic = pointcloud_topic
 
         self.reader = RosbagReader(path, {pointcloud_topic: PointCloud2})
         self.annotations_present = True
-        self.gt_detections_by_frame, self.start_frame, self.end_frame = self.read_bboxes_from_files(bbox_file_name)
+        self.gt_detections_by_frame, self.start_frame, self.end_frame = (
+            self.read_bboxes_from_files(bbox_file_name)
+        )
 
-    def read_bboxes_from_files(self, bbox_file_name:str) -> tuple[dict[int,list[Detection3D]], int, int]:
+    def read_bboxes_from_files(
+        self, bbox_file_name: str
+    ) -> tuple[dict[int, list[Detection3D]], int, int]:
         bboxes_parent_dir = "/opt/ros_ws/src/deps/external/detection_utils/model_evaluator/model_evaluator/bbox_generator"
 
         ped_bboxes_file_dir = f"{bboxes_parent_dir}/scene_boxes"
@@ -156,20 +165,40 @@ class RosbagDatasetReader3D(DatasetReader3D):
         if not self.annotations_present:
             return {}, 0, 0
 
-        ped_bboxes_centers_json = read_json(f"{ped_bboxes_file_dir}/{ped_bboxes_file_name}.json")
+        ped_bboxes_centers_json = read_json(
+            f"{ped_bboxes_file_dir}/{ped_bboxes_file_name}.json"
+        )
 
-        start_frame:int = ped_bboxes_centers_json[0]["frame"] + 1  # 1 frame before start
-        end_frame:int = ped_bboxes_centers_json[-1]["frame"]
+        start_frame: int = (
+            ped_bboxes_centers_json[0]["frame"] + 1
+        )  # 1 frame before start
+        end_frame: int = ped_bboxes_centers_json[-1]["frame"]
 
-        ped_bbox_tuples : list[tuple[list, int]] = [(ped_json["center"], ped_json["frame"]) for ped_json in ped_bboxes_centers_json]
+        ped_bbox_tuples: list[tuple[list, int]] = [
+            (ped_json["center"], ped_json["frame"])
+            for ped_json in ped_bboxes_centers_json
+        ]
 
-        l, w, h = self.gt_ped_bbox_dims[0], self.gt_ped_bbox_dims[1], self.gt_ped_bbox_dims[2]
+        l, w, h = (
+            self.gt_ped_bbox_dims[0],
+            self.gt_ped_bbox_dims[1],
+            self.gt_ped_bbox_dims[2],
+        )
         yaw = self.gt_ped_bbox_heading
 
-        ped_bboxes = [(
-            BBox3D.from_oriented(pjt[0][0], pjt[0][1], pjt[0][2], l, w, h, yaw)
-        , pjt[1]) for pjt in ped_bbox_tuples]
-        ped_dets = [(Detection3D(bbox, 1, Label.PEDESTRIAN), frame) for bbox,frame in ped_bboxes]
+        ped_bboxes = [
+            (
+                BBox3D.from_oriented(
+                    pjt[0][0], pjt[0][1], pjt[0][2], l, w, h, yaw
+                ),
+                pjt[1],
+            )
+            for pjt in ped_bbox_tuples
+        ]
+        ped_dets = [
+            (Detection3D(bbox, 1, Label.PEDESTRIAN), frame)
+            for bbox, frame in ped_bboxes
+        ]
         ped_dets_dict = {}
 
         for pd in ped_dets:
@@ -183,24 +212,48 @@ class RosbagDatasetReader3D(DatasetReader3D):
         static_vehicle_bboxes_file_dir = bboxes_parent_dir
         static_vehicle_bboxes_file_name = "static_vehicle_boxes"
 
-        static_vehicle_bboxes_json = read_json(f"{static_vehicle_bboxes_file_dir}/{static_vehicle_bboxes_file_name}.json")
+        static_vehicle_bboxes_json = read_json(
+            f"{static_vehicle_bboxes_file_dir}/{static_vehicle_bboxes_file_name}.json"
+        )
 
-        static_vehicle_bboxes_with_classes = [(BBox3D.from_oriented(
-            svbj["center"][0], svbj["center"][1], svbj["center"][2],
-            svbj["dimensions"][0], svbj["dimensions"][1], svbj["dimensions"][2],
-            svbj["heading"]
-        ), svbj["class"]) for svbj in static_vehicle_bboxes_json]
+        static_vehicle_bboxes_with_classes = [
+            (
+                BBox3D.from_oriented(
+                    svbj["center"][0],
+                    svbj["center"][1],
+                    svbj["center"][2],
+                    svbj["dimensions"][0],
+                    svbj["dimensions"][1],
+                    svbj["dimensions"][2],
+                    svbj["heading"],
+                ),
+                svbj["class"],
+            )
+            for svbj in static_vehicle_bboxes_json
+        ]
 
-        car_bboxes = [bbox_tuple[0] for bbox_tuple in static_vehicle_bboxes_with_classes if bbox_tuple[1] == 1]
-        truck_bboxes = [bbox_tuple[0] for bbox_tuple in static_vehicle_bboxes_with_classes if bbox_tuple[1] == 2]
+        car_bboxes = [
+            bbox_tuple[0]
+            for bbox_tuple in static_vehicle_bboxes_with_classes
+            if bbox_tuple[1] == 1
+        ]
+        truck_bboxes = [
+            bbox_tuple[0]
+            for bbox_tuple in static_vehicle_bboxes_with_classes
+            if bbox_tuple[1] == 2
+        ]
 
         car_dets = [Detection3D(bbox, 1, Label.CAR) for bbox in car_bboxes]
-        truck_dets = [Detection3D(bbox, 1, Label.TRUCK) for bbox in truck_bboxes]
+        truck_dets = [
+            Detection3D(bbox, 1, Label.TRUCK) for bbox in truck_bboxes
+        ]
 
         all_dets = {}
 
-        for frame_counter in range(start_frame, end_frame+1):
-            all_dets[frame_counter] = car_dets + truck_dets  # included in every frame
+        for frame_counter in range(start_frame, end_frame + 1):
+            all_dets[frame_counter] = (
+                car_dets + truck_dets
+            )  # included in every frame
             if frame_counter in ped_dets_dict:
                 all_dets[frame_counter] += ped_dets_dict[frame_counter]
 

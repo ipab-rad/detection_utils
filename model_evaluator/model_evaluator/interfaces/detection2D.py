@@ -1,5 +1,6 @@
 from model_evaluator.interfaces.labels import Label
 
+
 class BBox2D:
     # TODO: Add asserts
 
@@ -56,6 +57,7 @@ class BBox2D:
         intersect_area = (right - left) * (bottom - top)
 
         return intersect_area / (self.area() + other.area() - intersect_area)
+
 
 class Detection2D:
     bbox: BBox2D
