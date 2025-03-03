@@ -3,11 +3,12 @@ import cv2 as cv
 
 from model_evaluator.interfaces.detection2D import BBox2D
 
+
 def to_cv_pts(bbox: BBox2D):
     return (round(bbox.x1), round(bbox.y1)), (round(bbox.x2), round(bbox.y2))
 
 
-def draw_bboxes(image, gts, tps, fps, text_height = 25, offset = 10, thickness = 2):
+def draw_bboxes(image, gts, tps, fps, text_height=25, offset=10, thickness=2):
     scale = cv.getFontScaleFromHeight(
         cv.FONT_HERSHEY_SIMPLEX, text_height, thickness
     )
@@ -54,7 +55,21 @@ def draw_bboxes(image, gts, tps, fps, text_height = 25, offset = 10, thickness =
             thickness,
         )
 
-def draw_metrics(image, threshold, mean_ap, labels, num_gts_per_label, tps_per_label, fps_per_label, mrs_per_label, aps_per_label, text_height = 25, offset = 10, thickness = 2):
+
+def draw_metrics(
+    image,
+    threshold,
+    mean_ap,
+    labels,
+    num_gts_per_label,
+    tps_per_label,
+    fps_per_label,
+    mrs_per_label,
+    aps_per_label,
+    text_height=25,
+    offset=10,
+    thickness=2,
+):
     scale = cv.getFontScaleFromHeight(
         cv.FONT_HERSHEY_SIMPLEX, text_height, thickness
     )
@@ -142,11 +157,10 @@ def draw_metrics(image, threshold, mean_ap, labels, num_gts_per_label, tps_per_l
 def write_png_img(filename, image):
     cv.imwrite(f'{filename}.png', image)
 
+
 def create_video_writer(file, size=(960, 640), fps=10):
     if not file.endswith('.mp4'):
-            file += '.mp4'
+        file += '.mp4'
 
     fourcc = cv.VideoWriter_fourcc(*'avc1')
-    return cv.VideoWriter(
-        file, fourcc, fps, size
-    )
+    return cv.VideoWriter(file, fourcc, fps, size)

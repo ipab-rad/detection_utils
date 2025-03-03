@@ -6,7 +6,7 @@ import rclpy
 from rclpy.node import Node
 
 from sensor_msgs.msg import PointCloud2
-from autoware_perception_msgs.msg import DetectedObjects,DetectedObject
+from autoware_perception_msgs.msg import DetectedObjects, DetectedObject
 
 from model_evaluator.interfaces.inference_connector import InferenceConnector3D
 from model_evaluator.interfaces.detection3D import Detection3D, BBox3D

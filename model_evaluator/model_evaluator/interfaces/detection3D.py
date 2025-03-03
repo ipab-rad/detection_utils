@@ -19,15 +19,16 @@ class BBox3D:
     # corners 1-8
     corners: torch.Tensor
 
-    def __init__(self,
-                 center_x: float,
-                 center_y: float,
-                 center_z: float,
-                 length: float,
-                 width: float,
-                 height: float,
-                 heading: float,
-                 ):
+    def __init__(
+        self,
+        center_x: float,
+        center_y: float,
+        center_z: float,
+        length: float,
+        width: float,
+        height: float,
+        heading: float,
+    ):
         self.center_x = center_x
         self.center_y = center_y
         self.center_z = center_z
@@ -38,15 +39,17 @@ class BBox3D:
 
     @staticmethod
     def from_oriented(
-            center_x: float,
-            center_y: float,
-            center_z: float,
-            length: float,
-            width: float,
-            height: float,
-            heading: float,
+        center_x: float,
+        center_y: float,
+        center_z: float,
+        length: float,
+        width: float,
+        height: float,
+        heading: float,
     ) -> 'BBox3D':
-        bbox = BBox3D(center_x, center_y, center_z, length, width, height, heading)
+        bbox = BBox3D(
+            center_x, center_y, center_z, length, width, height, heading
+        )
         l, w, h = length, width, height
         yaw = heading
         center = [center_x, center_y, center_z]
@@ -85,12 +88,22 @@ class BBox3D:
         center = det_object.kinematics.pose_with_covariance.pose.position
         dimensions = det_object.shape.dimensions
 
-        quaternion = det_object.kinematics.pose_with_covariance.pose.orientation
+        quaternion = (
+            det_object.kinematics.pose_with_covariance.pose.orientation
+        )
 
         # since it's a yaw only rotation we can use a simple formula to extract the yaw from the quaternion
         yaw = 2.0 * acos(quaternion.w)
 
-        bbox = BBox3D.from_oriented(center.x, center.y, center.z, dimensions.x, dimensions.y, dimensions.z, yaw)
+        bbox = BBox3D.from_oriented(
+            center.x,
+            center.y,
+            center.z,
+            dimensions.x,
+            dimensions.y,
+            dimensions.z,
+            yaw,
+        )
         return bbox
 
     def __str__(self):

@@ -48,16 +48,24 @@ def inference_2d(
         detections_gts.append((detections, gts))
 
         aps_per_label = np.empty((len(video_annotations), len(thresholds)))
-        tps_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
-        fps_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
-        mrs_per_label = np.empty((len(video_annotations), len(thresholds)), dtype=np.uint)
+        tps_per_label = np.empty(
+            (len(video_annotations), len(thresholds)), dtype=np.uint
+        )
+        fps_per_label = np.empty(
+            (len(video_annotations), len(thresholds)), dtype=np.uint
+        )
+        mrs_per_label = np.empty(
+            (len(video_annotations), len(thresholds)), dtype=np.uint
+        )
 
         num_gts_per_label = np.empty(len(video_annotations), dtype=np.uint)
 
         for i, label in enumerate(video_annotations):
             label_gts = [gt for gt in gts if gt.label in label]
             label_detections = [
-                detection for detection in detections if detection.label in label
+                detection
+                for detection in detections
+                if detection.label in label
             ]
             num_label_gts = len(label_gts)
 
@@ -75,9 +83,17 @@ def inference_2d(
                 tps_per_label[i, j] = tps.sum()
                 fps_per_label[i, j] = fps.sum()
                 mrs_per_label[i, j] = mr
-                
-                tps_detections = [detection for i, detection in enumerate(label_detections) if tps[i] == 1]
-                fps_detections = [detection for i, detection in enumerate(label_detections) if fps[i] == 1]
+
+                tps_detections = [
+                    detection
+                    for i, detection in enumerate(label_detections)
+                    if tps[i] == 1
+                ]
+                fps_detections = [
+                    detection
+                    for i, detection in enumerate(label_detections)
+                    if fps[i] == 1
+                ]
 
                 draw_bboxes(image, label_gts, tps_detections, fps_detections)
 
@@ -87,7 +103,17 @@ def inference_2d(
             threshold = thresholds[0]
             mean_ap = mean_aps[0]
 
-            draw_metrics(image, threshold, mean_ap, video_annotations, num_gts_per_label, tps_per_label[:, 0], fps_per_label[:, 0], mrs_per_label[:, 0], aps_per_label[:, 0])
+            draw_metrics(
+                image,
+                threshold,
+                mean_ap,
+                video_annotations,
+                num_gts_per_label,
+                tps_per_label[:, 0],
+                fps_per_label[:, 0],
+                mrs_per_label[:, 0],
+                aps_per_label[:, 0],
+            )
 
             image = cv2.resize(image, video_size)
             video_writer.write(image)
@@ -95,6 +121,7 @@ def inference_2d(
     video_writer.release()
 
     return detections_gts
+
 
 def camera_run():
     connector = TensorrtYOLOXConnector(

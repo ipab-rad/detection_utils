@@ -1,9 +1,12 @@
-from model_evaluator.bbox_generator.keyframe_interpolator import KeyframeInterpolator
+from model_evaluator.bbox_generator.keyframe_interpolator import (
+    KeyframeInterpolator,
+)
 from model_evaluator.utils.json_file_reader import read_json, write_json
 import glob
 from pathlib import Path
 
-def create_bboxes_from_keyframes_file(file_path:str):
+
+def create_bboxes_from_keyframes_file(file_path: str):
     bboxes = read_json(f"keyframes/{file_path}.json")
 
     all_boxes = []
